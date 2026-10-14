@@ -16,6 +16,7 @@ Las órdenes se dan con la ventana de PyBullet activa:
     P        previsualizar con el fantasma             Enter  ejecutar / reanudar
     Esc      parar el robot y cancelar                 G / C  guardar / cargar la secuencia
     E        provocar un error (parada de protección) para la demostración
+    S        mostrar / ocultar los paneles de PyBullet (deslizadores)
 
 Diseño completo y guion de la defensa: docs/ensenar_reproducir.md
 Cómo usarlo: pon el robot el primero de robots.json y pulsa F5 (o ▶) en VS Code.
@@ -23,6 +24,7 @@ Cómo usarlo: pon el robot el primero de robots.json y pulsa F5 (o ▶) en VS Co
 
 import json
 import math
+import textwrap
 import queue
 import socket
 import struct
@@ -53,6 +55,8 @@ TIMEOUT = 5.0               # s sin recibir nada = robot colgado o apagado
 REINTENTO = 2.0             # s de espera antes de volver a conectar
 SIN_DATOS = 1.0             # s sin estado nuevo = robot desconectado
 COLOR_FANTASMA = [0.2, 0.6, 1.0, 0.35]            # azul semitransparente
+CAMARA = dict(cameraDistance=1.4, cameraYaw=50, cameraPitch=-30,
+              cameraTargetPosition=[0, 0, 0.3])   # vista inicial, centrada en el robot
 # =====================================================================
 
 # Teclas (códigos de p.getKeyboardEvents)
@@ -61,8 +65,23 @@ IZQUIERDA, DERECHA = p.B3G_LEFT_ARROW, p.B3G_RIGHT_ARROW
 # Borrar con B: Supr y Retroceso no siempre llegan a la ventana de PyBullet en Linux
 BORRAR = (ord("b"), p.B3G_DELETE, p.B3G_BACKSPACE)
 
-AYUDA = ["Espacio: guardar punto   <- ->: recorrer   B: borrar   D: punto de deslizadores",
-         "P: previsualizar   Enter: ejecutar/reanudar   Esc: parar   G/C: guardar/cargar   E: error"]
+# Ayuda de la ventana: solo las teclas que sirven en cada modo, en líneas cortas
+# (en una ventana pequeña una línea larga se sale de la vista o queda tapada por los deslizadores)
+AYUDA = {
+    "REPOSO": ["Espacio: guardar   P: ver   Enter: ejecutar",
+               "<- ->: elegir   B: borrar   D: deslizadores",
+               "G: guardar   C: cargar   S: paneles"],
+    "PREVISUALIZANDO": ["Esc: cancelar"],
+    "ENVIANDO": ["Esc: PARAR   E: provocar error"],
+    "MOVIENDO": ["Esc: PARAR   E: provocar error"],
+    "REANUDANDO": ["Esc: PARAR"],
+    "DETENIDO": ["Enter: reanudar   Esc: cancelar"],
+}
+ANCHO_LINEA = 42                # caracteres por línea antes de partir un aviso largo
+LINEAS_AVISO = 3
+PX_POR_TAMANO = 13              # alto aproximado en píxeles de una línea de textSize 1
+MARGEN_PX = 20                  # separación del borde de la ventana
+ANCHO_PANEL_PX = 260            # lo que tapa el panel izquierdo de PyBullet cuando está visible
 
 
 def punto_valido(q):
@@ -202,6 +221,10 @@ class Aplicacion:
         self.deslizadores = None        # últimos valores leídos
         self.deslizadores_listos = False  # ya puestos en la postura del robot
         self.textos = {}                # ids de los textos de la ventana
+        self.paneles = False            # paneles de PyBullet (deslizadores) visibles
+        self.camara = None              # última cámara vista y cuándo cambió
+        self.t_camara = 0.0
+        self.camara_textos = None       # cámara con la que se colocaron los textos
         self.situacion = "nunca"        # None: sin datos · True/False: robot en RUNNING o no
 
     # ----- utilidades -----
@@ -215,7 +238,7 @@ class Aplicacion:
         print(f"[{self.modo}] {texto}")
 
     def detener(self, motivo):
-        self.cambiar_modo("DETENIDO", f"{motivo}. Enter: reanudar · Esc: cancelar")
+        self.cambiar_modo("DETENIDO", motivo)          # la ayuda ya dice Enter/Esc
 
     def iniciar_deslizadores(self, estado):
         """Pone los deslizadores en la postura del robot la primera vez que llegan datos.
@@ -252,7 +275,11 @@ class Aplicacion:
 
     # ----- teclas -----
     def tecla(self, t, estado):
-        if t == ESC:
+        if t == ord("s"):
+            self.paneles = not self.paneles
+            p.configureDebugVisualizer(p.COV_ENABLE_GUI, int(self.paneles))
+            self.camara_textos = None                       # recolocar: cambia el sitio libre
+        elif t == ESC:
             # También en DETENIDO: tras un corte de red el robot puede seguir moviéndose
             if self.modo in ("ENVIANDO", "MOVIENDO", "REANUDANDO", "DETENIDO"):
                 self.robot.enviar("stopj(2)")
@@ -393,8 +420,6 @@ class Aplicacion:
                 nombre = MODOS_ROBOT.get(estado["modo_robot"], estado["modo_robot"])
                 aviso = ("Robot conectado y en RUNNING" if situacion else
                          f"Robot en {nombre}: enciéndelo y suelta frenos en PolyScope")
-                if self.modo == "DETENIDO":
-                    aviso += ". Enter: reanudar · Esc: cancelar"
                 self.avisar(aviso)
 
         if self.modo in ("ENVIANDO", "MOVIENDO"):
@@ -483,16 +508,15 @@ class Aplicacion:
 
         # Textos de la ventana
         if estado is None:
-            linea_estado = ("CONECTADO, ESPERANDO DATOS DEL ROBOT" if self.robot.conectado()
-                            else "SIN CONEXIÓN CON EL ROBOT")
+            linea_estado = "ESPERANDO DATOS" if self.robot.conectado() else "SIN CONEXIÓN"
         elif self.modo in ("ENVIANDO", "MOVIENDO"):
             linea_estado = f"{self.modo} {self.paso + 1}/{len(self.puntos)}"
         else:
             linea_estado = self.modo
         if estado is not None and estado["modo_robot"] != 7:      # p. ej. recién arrancado URSim
-            linea_estado += f" · robot {MODOS_ROBOT.get(estado['modo_robot'], estado['modo_robot'])}"
+            linea_estado += f" · {MODOS_ROBOT.get(estado['modo_robot'], estado['modo_robot'])}"
         puntos = (f"Puntos: {len(self.puntos)}" +
-                  (f" · seleccionado {self.sel + 1}" if self.puntos else "") +
+                  (f" (ves el {self.sel + 1})" if self.puntos else "") +
                   (" · fantasma = deslizadores" if self.ver_deslizadores and self.modo == "REPOSO" else ""))
         if self.modo == "DETENIDO" or estado is None:
             color = [0.8, 0, 0]                             # rojo: hay que hacer algo
@@ -500,20 +524,59 @@ class Aplicacion:
             color = [0.9, 0.5, 0]                           # naranja: conectado, robot sin encender
         else:
             color = [0, 0, 0]
-        self.texto("estado", linea_estado, 1.25, color, 1.8)
-        self.texto("aviso", self.aviso, 1.17, color, 1.2)
-        self.texto("puntos", puntos, 1.10, [0, 0, 0], 1.2)
-        self.texto("ayuda0", AYUDA[0], 1.03, [0.3, 0.3, 0.3], 1.0)
-        self.texto("ayuda1", AYUDA[1], 0.97, [0.3, 0.3, 0.3], 1.0)
+        aviso = textwrap.wrap(self.aviso, ANCHO_LINEA)[:LINEAS_AVISO]
+        ayuda = AYUDA.get(self.modo, [])
+        gris = [0.25, 0.25, 0.25]
+        # (texto, color, tamaño): una entrada por línea, de arriba abajo
+        lineas = ([(linea_estado, color, 2.2)] + [(a, color, 1.5) for a in aviso] +
+                  [(puntos, [0, 0, 0], 1.5)] + [(a, gris, 1.4) for a in ayuda])
+        lineas += [("", gris, 1.4)] * (1 + LINEAS_AVISO + 1 + 3 - len(lineas))   # vaciar las sobrantes
+        recolocar = self.mirar_camara()
+        y_px = MARGEN_PX
+        for i, (texto, col, tam) in enumerate(lineas):
+            y_px += PX_POR_TAMANO * tam + 4                 # bajar una línea de su altura
+            self.texto(i, texto, col, tam, y_px, recolocar)
 
-    def texto(self, clave, texto, altura, color, tam):
-        """Texto en la ventana. Solo se redibuja si cambia (si no, parpadea)."""
-        anterior = self.textos.get(clave)
-        if anterior and anterior[1] == (texto, tuple(color)):
+    def mirar_camara(self):
+        """True si hay que recolocar los textos.
+
+        El texto de PyBullet mide siempre lo mismo en píxeles, pero se coloca en coordenadas
+        del mundo. Si se cambia el tamaño de la ventana o el zoom, las líneas se montarían unas
+        sobre otras o se saldrían de la vista: entonces se recolocan, cuando la cámara lleva
+        0,3 s quieta (mientras se arrastra se dejan quietas para que no parpadeen).
+        """
+        cam = p.getDebugVisualizerCamera()
+        clave = (cam[0], cam[1], round(cam[8], 1), round(cam[9], 1), round(cam[10], 3),
+                 tuple(round(v, 3) for v in cam[11]))     # ancho, alto, yaw, pitch, dist, objetivo
+        ahora = time.monotonic()
+        if clave != self.camara:
+            self.camara, self.t_camara = clave, ahora
+        if clave == self.camara_textos:
+            return False
+        if self.camara_textos is not None and ahora - self.t_camara < 0.3:
+            return False                                    # la primera vez se colocan ya
+        self.camara_textos = clave
+        ancho, alto, proy = cam[0], cam[1], cam[3]
+        unidad = lambda v: [c / math.sqrt(sum(x * x for x in v)) for c in v]
+        derecha, arriba, dist, objetivo = unidad(cam[6]), unidad(cam[7]), cam[10], cam[11]
+        m_px = 2 * dist / (proy[5] * alto)                  # metros por píxel a la distancia del objetivo
+        izquierda_px = MARGEN_PX + (ANCHO_PANEL_PX if self.paneles else 0)
+        # Esquina de arriba a la izquierda, en el plano que pasa por el objetivo de la cámara
+        self.esquina = [o + (izquierda_px - ancho / 2) * m_px * d + alto / 2 * m_px * a
+                        for o, d, a in zip(objetivo, derecha, arriba)]
+        self.abajo = [-m_px * a for a in arriba]           # un píxel hacia abajo, en metros
+        return True
+
+    def texto(self, fila, texto, color, tam, y_px, recolocar):
+        """Una línea del bloque de textos. Solo se redibuja si cambia (si no, parpadea)."""
+        anterior = self.textos.get(fila)
+        contenido = (texto, tuple(color), tam, y_px)
+        if anterior and anterior[1] == contenido and not recolocar:
             return
+        posicion = [e + y_px * b for e, b in zip(self.esquina, self.abajo)]
         kwargs = {"replaceItemUniqueId": anterior[0]} if anterior else {}
-        id_ = p.addUserDebugText(texto, [0, 0, altura], color, textSize=tam, **kwargs)
-        self.textos[clave] = (id_, (texto, tuple(color)))
+        id_ = p.addUserDebugText(texto, posicion, color, textSize=tam, **kwargs)
+        self.textos[fila] = (id_, contenido)
 
 
 def leer_teclas():
@@ -536,6 +599,11 @@ def main():
     for enlace in range(-1, p.getNumJoints(fantasma)):
         p.changeVisualShape(fantasma, enlace, rgbaColor=COLOR_FANTASMA)
     p.configureDebugVisualizer(p.COV_ENABLE_KEYBOARD_SHORTCUTS, 0)   # teclas libres para nosotros
+    for panel in (p.COV_ENABLE_RGB_BUFFER_PREVIEW, p.COV_ENABLE_DEPTH_BUFFER_PREVIEW,
+                  p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW):
+        p.configureDebugVisualizer(panel, 0)                         # paneles vacíos: más sitio
+    p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)                  # paneles ocultos; S los muestra
+    p.resetDebugVisualizerCamera(**CAMARA)
 
     robot = Robot(config)
     app = Aplicacion(escena, fantasma, robot)

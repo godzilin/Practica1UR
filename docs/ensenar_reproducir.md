@@ -126,6 +126,7 @@ Nunca se bloquea esperando al robot: cada vuelta del bucle mira el estado y deci
 | **Esc** | Parar (`stopj`) y cancelar la secuencia |
 | **G / C** | Guardar / Cargar `secuencias/secuencia.json` |
 | **E** | Provocar un error para la demostración: envía `protective_stop()` |
+| **S** | Mostrar u ocultar los paneles de PyBullet (deslizadores). Empiezan ocultos para dejar sitio al robot y a los textos |
 
 En la ventana se muestra el estado (`REPOSO`, `MOVIENDO 2/4`, `DETENIDO: <motivo>`...), el número de
 puntos y esta ayuda. La consola guarda el registro detallado.
