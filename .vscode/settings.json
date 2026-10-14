@@ -1,0 +1,5 @@
+{
+    // Usar el entorno de la práctica al pulsar F5 o ▶
+    "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
+    "python.terminal.activateEnvironment": true
+}
