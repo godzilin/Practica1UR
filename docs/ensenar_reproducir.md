@@ -125,6 +125,7 @@ Nunca se bloquea esperando al robot: cada vuelta del bucle mira el estado y deci
 | **Enter** | Ejecutar la secuencia / reanudar tras un error |
 | **Esc** | Parar (`stopj`) y cancelar la secuencia |
 | **G / C** | Guardar / Cargar `secuencias/secuencia.json` |
+| **E** | Provocar un error para la demostración: envía `protective_stop()` |
 
 En la ventana se muestra el estado (`REPOSO`, `MOVIENDO 2/4`, `DETENIDO: <motivo>`...), el número de
 puntos y esta ayuda. La consola guarda el registro detallado.
@@ -151,13 +152,41 @@ Al cargar se valida que cada punto tenga 6 números entre −2π y 2π.
 - Esc envía `stopj` en cualquier momento.
 - En el robot real: secuencia probada antes en URSim y profesor presente con la seta al alcance.
 
-## 5. Plan de desarrollo
+## 5. Resultados de los experimentos (D0)
+
+Medido contra URSim 5.25 (`10.172.18.67`), escuchando el puerto 30001 mientras se envían órdenes.
+
+| Experimento | Qué envía el robot | Cómo lo detecta la aplicación |
+|---|---|---|
+| `movej` con 5 ángulos | Tipo 20 subtipo 10 (excepción): línea 1, columna 1, `type_not_list_size:6:` | Mensaje de error |
+| `def p(): movej(no_existe) end` | Tipo 20 subtipo 10: línea 2, columna 9, `compile_error_name_not_found:no_existe:` | Mensaje de error |
+| Una sola línea con sintaxis rota (`movej((`) o variable inexistente | **Nada**: ni error ni arranque de programa | `isProgramRunning` no pasa a verdadero en 2 s |
+| `stopj(2)` a mitad de un `movej` (igual que parar desde PolyScope) | `isProgramRunning` vuelve a falso con la base en 31,9° y el objetivo en 48,1° | Terminó lejos del objetivo |
+| `protective_stop()` a mitad de un `movej` | `isProtectiveStopped` = verdadero, tipo 20 subtipo 6 con código 209, nivel 2 y **sin texto**, y subtipo 5 (modo de seguridad) | Parada de protección y mensaje de error (se muestra el código `C209A0`) |
+| Desbloqueo | Dashboard (29999): `unlock protective stop` → `Protective stop releasing`; después `close safety popup` | Al reanudar tras una parada de protección |
+
+Otros mensajes tipo 20 observados: subtipo 7 (*key message*) con `PROGRAM_XXX_STARTED` / `PROGRAM_XXX_STOPPED`,
+subtipo 12 y 17 al conectar. No son errores: se ignoran.
+
+**Conclusiones para el diseño**
+
+- Hacen falta las tres vías de detección: mensajes de error, `isProtectiveStopped` y la comprobación final de
+  `q_actual`. Una orden mal escrita en una sola línea no genera ningún mensaje: solo se detecta porque el programa
+  no arranca.
+- El subtipo 6 puede venir sin texto: se muestra el código (`C<código>A<argumento>`).
+- Error para la defensa: una tecla **E** que envía `protective_stop()` durante la ejecución. Es reproducible,
+  se ve en PolyScope y prueba la detección por `isProtectiveStopped` y por mensaje. Al reanudar, la aplicación
+  desbloquea la parada por el dashboard y reenvía el punto. También vale parar desde PolyScope.
+- El fantasma con `changeVisualShape(rgbaColor=[0.2, 0.6, 1.0, 0.35])` en todos los enlaces se ve
+  semitransparente y azul junto al robot real (comprobado con una captura de la ventana).
+
+## 6. Plan de desarrollo
 
 Cada fase se cierra con su comprobación contra URSim, un commit y un push.
 
 | Fase | Qué | Cómo se comprueba | Estado |
 |---|---|---|---|
-| D0 | Experimentos: qué mensajes envía URSim ante un URScript erróneo y una parada de protección; transparencia en PyBullet | Ver tipos y subtipos con `primaria.py` en `MODO = "mensajes"` | Pendiente |
+| D0 | Experimentos: qué mensajes envía URSim ante un URScript erróneo y una parada de protección; transparencia en PyBullet | Ver tipos y subtipos con `primaria.py` en `MODO = "mensajes"` | Hecho (sección 5) |
 | D1 | Esqueleto: hilo receptor con estado completo + bucle con teclado y texto en pantalla | El robot se mueve en la ventana y las teclas se reconocen | Pendiente |
 | D2 | Enviar un `movej` y confirmarlo sin bloquear | Un punto ejecutado y confirmado con la ventana fluida | Pendiente |
 | D3 | Enseñar: Espacio, deslizadores, ← →, Supr | 4 puntos guardados | Pendiente |
@@ -167,7 +196,7 @@ Cada fase se cierra con su comprobación contra URSim, un commit y un push.
 | D7 | Guardar y cargar | Guardar, reiniciar el programa, cargar y ejecutar | Pendiente |
 | D8 | Ensayo de la defensa en URSim y checklist del robot real | Guion de la sección 6 completo | Pendiente |
 
-## 6. Guion para la defensa
+## 7. Guion para la defensa
 
 ### En el aula (URSim)
 
@@ -178,12 +207,9 @@ Cada fase se cierra con su comprobación contra URSim, un commit y un push.
 4. **Previsualizar** (P): el fantasma recorre la secuencia; el robot real no se mueve.
 5. **Ejecutar** (Enter): el robot va punto a punto. Explicar la confirmación de cada uno
    (`isProgramRunning` y `q_actual`).
-6. **Provocar un error** (se confirmará en D0 cuál es más fiable):
-   - detener el programa desde PolyScope a mitad de un movimiento: el robot no llega al punto;
-   - una orden URScript errónea (excepción, tipo 20 subtipo 10);
-   - parada de protección.
-
-   El programa muestra el motivo y se detiene. Reanudar con Enter o cancelar con Esc.
+6. **Provocar un error** durante la ejecución: tecla **E** (parada de protección, `protective_stop()`), o
+   parar el programa desde PolyScope a mitad de un movimiento. El programa muestra el motivo y se detiene.
+   Reanudar con Enter (desbloquea la parada y reenvía el punto) o cancelar con Esc.
 7. **Guardar** (G), cerrar, volver a abrir, **cargar** (C) y ejecutar.
 
 ### En el laboratorio de robótica (UR3e real, con el profesor)
@@ -196,7 +222,7 @@ Cada fase se cierra con su comprobación contra URSim, un commit y un push.
 ### Preguntas del apartado 12 relacionadas
 
 - **(S) 9.** ¿Por qué no basta con haber enviado un `movej` para saber que el robot ha llegado al punto?
-  ¿Qué información del propio robot usáis para confirmarlo? → sección 2, *El robot no confirma las órdenes*.
+  ¿Qué información del propio robot usáis para confirmarlo? → sección 2, *El robot no confirma las órdenes*, y sección 5.
 - **(S) 10.** Cualquier equipo de la red puede conectarse al puerto 30001 y enviar un programa al robot.
   ¿Qué riesgo supone en una planta real? Proponed dos medidas, una en la configuración del robot y otra en
   la arquitectura de red.
