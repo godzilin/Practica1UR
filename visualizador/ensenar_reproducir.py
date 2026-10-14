@@ -195,6 +195,7 @@ class Aplicacion:
         self.q_fantasma = None          # postura del fantasma durante la previsualización
         self.ver_deslizadores = False   # el fantasma muestra los deslizadores
         self.deslizadores = None        # últimos valores leídos
+        self.deslizadores_listos = False  # ya puestos en la postura del robot
         self.textos = {}                # ids de los textos de la ventana
 
     # ----- utilidades -----
@@ -209,6 +210,23 @@ class Aplicacion:
 
     def detener(self, motivo):
         self.cambiar_modo("DETENIDO", f"{motivo}. Enter: reanudar · Esc: cancelar")
+
+    def iniciar_deslizadores(self, estado):
+        """Pone los deslizadores en la postura del robot la primera vez que llegan datos.
+
+        Si el programa arranca sin robot, los deslizadores están en 0 (brazo estirado): con D
+        se guardaría esa postura sin querer. Por eso D no funciona hasta que esto se ha hecho.
+        """
+        if self.deslizadores_listos or estado is None:
+            return
+        q = a_pybullet(estado["q"])
+        actuales = self.escena.get_param_values()
+        self.escena.set_param_values({nombre.strip(): (q[i] if i < 6 else v)
+                                      for i, (nombre, v) in enumerate(actuales.items())})
+        self.deslizadores = None        # este cambio no lo ha hecho el operador
+        self.deslizadores_listos = True
+        if self.modo == "REPOSO":
+            self.avisar("Listo. Lleva el robot a una postura y pulsa Espacio para guardarla")
 
     def leer_deslizadores(self):
         """Los 6 primeros deslizadores de la ventana (articulaciones del brazo)."""
@@ -250,7 +268,9 @@ class Aplicacion:
                 self.avisar(f"Punto {self.sel + 1} guardado: {grados(estado['q'])}")
         elif t == ord("d"):
             q = self.leer_deslizadores()
-            if punto_valido(q):
+            if not self.deslizadores_listos:
+                self.avisar("Sin datos del robot: los deslizadores aún no están en su postura")
+            elif punto_valido(q):
                 self.puntos.insert(self.sel + 1 if self.puntos else 0, q)
                 self.sel = self.sel + 1 if len(self.puntos) > 1 else 0
                 self.ver_deslizadores = False
@@ -488,22 +508,11 @@ def main():
     robot = Robot(config)
     app = Aplicacion(escena, fantasma, robot)
 
-    # Los deslizadores empiezan en la postura del robot
-    t0 = time.monotonic()
-    while robot.leer() is None and time.monotonic() - t0 < TIMEOUT:
-        time.sleep(0.1)
-    estado = robot.leer()
-    if estado is not None:
-        q = a_pybullet(estado["q"])
-        actuales = escena.get_param_values()
-        escena.set_param_values({nombre.strip(): (q[i] if i < 6 else v)
-                                 for i, (nombre, v) in enumerate(actuales.items())})
-        app.avisar("Listo. Lleva el robot a una postura y pulsa Espacio para guardarla")
-
     try:
         siguiente = time.monotonic()
         while True:
             estado = robot.leer()
+            app.iniciar_deslizadores(estado)                # en cuanto lleguen datos del robot
             for t in leer_teclas():
                 app.tecla(t, estado)
             app.paso_maquina(estado)
