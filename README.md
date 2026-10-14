@@ -8,6 +8,7 @@
 | `visualizador/` | Práctica evaluable: `test_conexion.py`, y por hitos `primaria.py`, `tiempo_real.py`, varios robots y enseñar/reproducir |
 | `practica1_hilos/` | Práctica 1 guiada (e1_*, e2_*, e3_*), escritos a mano desde el Anexo A |
 | `antiguos/` | Pruebas anteriores (práctica 0, lectura de dos robots, túnel) |
+| `docs/` | Documentos de diseño y guiones de defensa |
 | `venv/` | Entorno Python 3.13 con `ur3e_rg2`, `pybullet` y `numpy` |
 
 ## Entorno
@@ -103,4 +104,4 @@ presente con la seta de emergencia al alcance.
 - [x] C · `varios_robots.py` + `robots.json`: hilo receptor por robot, `Lock`, un único bucle de dibujo
   - Probado con las dos VMs: ambos siguen a su URSim; red a `.73` cortada 10 s → su etiqueta pasa a
     roja "SIN DATOS" y se congela, `URSim_1` sigue moviéndose; al volver la red reconecta solo
-- [ ] D · enseñar y reproducir (URScript, `movej`)
+- [ ] D · enseñar y reproducir (URScript, `movej`): diseño, plan y guion de defensa en [`docs/ensenar_reproducir.md`](docs/ensenar_reproducir.md)
