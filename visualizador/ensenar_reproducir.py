@@ -12,7 +12,7 @@ terminado. Si el robot avisa de un error o se para, la secuencia se detiene y se
 
 Las órdenes se dan con la ventana de PyBullet activa:
     Espacio  guardar la postura actual como punto      ← →    recorrer los puntos
-    D        añadir la postura de los deslizadores     Supr   borrar el punto seleccionado
+    D        añadir la postura de los deslizadores     B      borrar el punto seleccionado
     P        previsualizar con el fantasma             Enter  ejecutar / reanudar
     Esc      parar el robot y cancelar                 G / C  guardar / cargar la secuencia
     E        provocar un error (parada de protección) para la demostración
@@ -58,9 +58,10 @@ COLOR_FANTASMA = [0.2, 0.6, 1.0, 0.35]            # azul semitransparente
 # Teclas (códigos de p.getKeyboardEvents)
 ESPACIO, ENTER, ESC = ord(" "), p.B3G_RETURN, 27
 IZQUIERDA, DERECHA = p.B3G_LEFT_ARROW, p.B3G_RIGHT_ARROW
-SUPR, RETROCESO = p.B3G_DELETE, p.B3G_BACKSPACE
+# Borrar con B: Supr y Retroceso no siempre llegan a la ventana de PyBullet en Linux
+BORRAR = (ord("b"), p.B3G_DELETE, p.B3G_BACKSPACE)
 
-AYUDA = ["Espacio: guardar punto   <- ->: recorrer   Supr: borrar   D: punto de deslizadores",
+AYUDA = ["Espacio: guardar punto   <- ->: recorrer   B: borrar   D: punto de deslizadores",
          "P: previsualizar   Enter: ejecutar/reanudar   Esc: parar   G/C: guardar/cargar   E: error"]
 
 
@@ -246,7 +247,7 @@ class Aplicacion:
             self.sel = max(0, min(len(self.puntos) - 1, self.sel + (1 if t == DERECHA else -1)))
             self.ver_deslizadores = False
             self.avisar(f"Punto {self.sel + 1}/{len(self.puntos)}: {grados(self.puntos[self.sel])}")
-        elif t in (SUPR, RETROCESO) and self.puntos:
+        elif t in BORRAR and self.puntos:
             self.puntos.pop(self.sel)
             self.sel = max(0, min(self.sel, len(self.puntos) - 1))
             self.avisar(f"Punto borrado. Quedan {len(self.puntos)}")

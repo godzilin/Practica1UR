@@ -119,7 +119,7 @@ Nunca se bloquea esperando al robot: cada vuelta del bucle mira el estado y deci
 |---|---|
 | **Espacio** | Enseñar: guardar la postura actual del robot como punto nuevo |
 | **← / →** | Recorrer los puntos; el fantasma muestra el seleccionado |
-| **Supr** | Borrar el punto seleccionado |
+| **B** | Borrar el punto seleccionado (también Supr/Retroceso si llegan) |
 | **D** | Añadir un punto con la postura de los deslizadores |
 | **P** | Previsualizar la secuencia con el fantasma |
 | **Enter** | Ejecutar la secuencia / reanudar tras un error |
@@ -189,7 +189,7 @@ Cada fase se cierra con su comprobación contra URSim, un commit y un push.
 | D0 | Experimentos: qué mensajes envía URSim ante un URScript erróneo y una parada de protección; transparencia en PyBullet | Ver tipos y subtipos con `primaria.py` en `MODO = "mensajes"` | Hecho (sección 5) |
 | D1 | Esqueleto: hilo receptor con estado completo + bucle con teclado y texto en pantalla | El robot se mueve en la ventana y las teclas se reconocen | Hecho |
 | D2 | Enviar un `movej` y confirmarlo sin bloquear | Un punto ejecutado y confirmado con la ventana fluida | Hecho |
-| D3 | Enseñar: Espacio, deslizadores, ← →, Supr | 4 puntos guardados | Hecho |
+| D3 | Enseñar: Espacio, deslizadores, ← →, B | 4 puntos guardados | Hecho |
 | D4 | Previsualizar con el fantasma | El fantasma recorre la secuencia, el real no se mueve | Hecho |
 | D5 | Ejecutar la secuencia completa | 4 puntos ejecutados, cada uno confirmado | Hecho |
 | D6 | Supervisión: detener, mostrar el motivo, reanudar o cancelar | Error provocado → detenido con motivo → reanudar | Hecho |
