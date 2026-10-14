@@ -43,7 +43,26 @@ usa todos.
 - `visualizador/primaria.py`: visualizador; `MODO` = `"angulos"` (A4/A5), `"bytes"` (A1) o `"mensajes"` (A2/A3)
 - `visualizador/tiempo_real.py`: visualizador a 500 Hz; `MODO` = `"angulos"` (B2–B4) o `"paquetes"` (B1); `FPS` de dibujo
 - `visualizador/ensenar_reproducir.py`: mini-aplicación Enseñar y reproducir; teclas con la ventana de PyBullet activa (Espacio, ← →, B, D, P, Enter, Esc, G/C, E)
+- `visualizador/prueba_robustez.py`: prueba sin robot; mete 20 000 mensajes rotos en el parser y `robots.json` erróneos (debe acabar en `TODO OK`)
 - `visualizador/varios_robots.py`: varios robots en la misma ventana; los robots se configuran en `visualizador/robots.json` (nombre, host, puerto, posición `[x, y, z, roll, pitch, yaw]`)
+
+## Robustez: qué pasa si...
+
+| Situación | Qué hace el programa |
+|---|---|
+| `robots.json` no existe, JSON mal escrito, falta un campo, puerto no numérico, nombre repetido | Termina con un mensaje que dice qué arreglar (sin traceback) |
+| El robot no responde, se reinicia URSim o se corta el cable | Reintenta cada 2 s; en el bloque C solo se congela ese robot (etiqueta "SIN DATOS") |
+| Llega un mensaje truncado, corrupto o con ángulos NaN | Se descarta (NaN) o se reconecta para realinear el buffer; nunca muere un hilo receptor |
+| Fallo inesperado dentro de un hilo receptor | Se avisa y se reconecta: el hilo no muere en silencio |
+| Se cierra la ventana de PyBullet | Termina limpio ("Ventana de PyBullet cerrada") en lugar de reintentar la red |
+| Se pierde la red al enviar una orden o el dashboard no responde | La secuencia pasa a DETENIDO con el motivo; no se cuelga |
+| Parada de protección | DETENIDO; Enter la desbloquea por el dashboard y reanuda el punto pendiente |
+| Parada de emergencia, robot apagado o sin frenos soltados en mitad de la secuencia | DETENIDO; la emergencia **no** se desbloquea por red, la rearma una persona |
+| Ctrl+C, ventana cerrada o error del programa con el robot moviéndose | Envía `stopj` antes de salir (probado: para a mitad del giro) |
+| Esc tras un corte de red | Envía `stopj` también en DETENIDO, por si el robot sigue moviéndose |
+| `V`/`A` por encima de 0,3 rad/s y 0,5 rad/s² | `ensenar_reproducir.py` se niega a arrancar |
+| Secuencia con puntos no válidos (fuera de ±2π, NaN, no numéricos) o fichero que no es una lista | No se carga ni se envía |
+| Fallo al guardar la secuencia | Se avisa; se escribe en un temporal y se renombra, así la anterior no se pierde |
 
 ## Entrega y evaluación (apartado 11 del enunciado)
 
@@ -98,7 +117,7 @@ presente con la seta de emergencia al alcance.
         (posición del TCP con error < 0,1 mm en 4 posturas; orientación con diferencia constante
         que solo es la definición de ejes de `tool0` en el URDF del RG2)
   - [x] Reconexión simulada: socket cerrado (`ss -K`) y red cortada 10 s (iptables) → reconecta solo
-  - [ ] Reiniciar URSim de verdad con el programa en marcha (lo que se ve en la defensa)
+  - [x] Reiniciar URSim de verdad con el programa en marcha (lo que se ve en la defensa)
 - [x] B1–B4 · `tiempo_real.py` (30003)
   - URSim 5.25: paquetes de 1220 B, ~480/s (la VM simula un 4 % más lenta que el tiempo real:
     el reloj del robot avanza 2 ms por paquete pero solo 3,83 s cada 4 s reales)
@@ -106,5 +125,5 @@ presente con la seta de emergencia al alcance.
   - Probado con las dos VMs: ambos siguen a su URSim; red a `.73` cortada 10 s → su etiqueta pasa a
     roja "SIN DATOS" y se congela, `URSim_1` sigue moviéndose; al volver la red reconecta solo
 - [x] D · `ensenar_reproducir.py`: enseñar, previsualizar con fantasma, ejecutar con confirmación, supervisión de errores, guardar/cargar. Diseño, pruebas y guion de defensa en [`docs/ensenar_reproducir.md`](docs/ensenar_reproducir.md)
-  - [ ] Probar a mano las teclas en la ventana de PyBullet
+  - [x] Probar a mano las teclas en la ventana de PyBullet
   - [ ] Validación en un UR3e real con el profesor

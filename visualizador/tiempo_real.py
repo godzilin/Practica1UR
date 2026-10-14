@@ -12,9 +12,12 @@ Cómo usarlo: pon el robot el primero de robots.json, cambia las constantes de
 CONFIGURACIÓN si hace falta y pulsa F5 (o ▶) en VS Code.
 """
 
+import math
 import socket
 import struct
 import time
+
+import pybullet as p
 
 from primaria import cargar_robots, grados, SIGNOS, OFFSETS    # el convenio se ajusta en primaria.py
 
@@ -84,7 +87,9 @@ def conectar_y_visualizar(robot, host):
             for paquete in nuevos:
                 if MODO == "paquetes":
                     print(f"    paquete de {len(paquete)} B")
-                q = list(struct.unpack_from(">6d", paquete, POS_Q_ACTUAL))
+                nuevo = list(struct.unpack_from(">6d", paquete, POS_Q_ACTUAL))
+                if all(math.isfinite(v) for v in nuevo):    # un NaN no se dibuja
+                    q = nuevo
             paquetes += len(nuevos)
             max_por_recv = max(max_por_recv, len(nuevos))
 
@@ -119,11 +124,15 @@ def main():
         while True:
             try:
                 conectar_y_visualizar(robot, config["host"])
-            except (OSError, ConnectionError, struct.error) as e:
+            except p.error:
+                raise                                       # la ventana no es la red: no reintentar
+            except (OSError, ConnectionError, ValueError, struct.error) as e:
                 print(f"Conexión perdida: {e}. Reintentando en {REINTENTO:.0f} s")
                 time.sleep(REINTENTO)
     except KeyboardInterrupt:
         print("\nFin")
+    except p.error:
+        print("Ventana de PyBullet cerrada. Fin")
 
 
 if __name__ == "__main__":

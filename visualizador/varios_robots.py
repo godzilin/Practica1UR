@@ -67,7 +67,11 @@ def receptor(nombre, host, puerto):
                                 ultimo_estado[nombre] = (q, time.monotonic())
         except (OSError, ConnectionError, ValueError, struct.error) as e:
             print(f"[{nombre}] Conexión perdida: {e}. Reintentando en {REINTENTO:.0f} s")
-            parar.wait(REINTENTO)                           # como sleep, pero sale si se para
+        except Exception as e:
+            # Último recurso: un fallo inesperado no debe matar el hilo (el robot quedaría
+            # congelado para siempre sin que nadie lo sepa). Se avisa y se reconecta.
+            print(f"[{nombre}] Error inesperado: {type(e).__name__}: {e}. Reintentando")
+        parar.wait(REINTENTO)                               # como sleep, pero sale si se para
 
 
 def main():
@@ -133,7 +137,10 @@ def main():
             time.sleep(max(0.0, siguiente - time.monotonic()))
     except KeyboardInterrupt:
         print("\nFin")
-        parar.set()
+    except p.error:
+        print("Ventana de PyBullet cerrada. Fin")
+    finally:
+        parar.set()                                         # que los hilos terminen
         for h in hilos:
             h.join(timeout=1)
 

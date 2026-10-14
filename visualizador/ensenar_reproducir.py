@@ -33,7 +33,7 @@ from pathlib import Path
 import pybullet as p
 
 from primaria import (cargar_robots, cortar_mensajes, leer_estado, describir_error, grados,
-                      SIGNOS, OFFSETS, MSG_ESTADO, MSG_ROBOT)
+                      es_numero, SIGNOS, OFFSETS, MSG_ESTADO, MSG_ROBOT)
 
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
@@ -68,8 +68,7 @@ AYUDA = ["Espacio: guardar punto   <- ->: recorrer   B: borrar   D: punto de des
 def punto_valido(q):
     """6 números finitos entre -2π y 2π. Evita, por ejemplo, enviar grados como si fueran radianes."""
     return (isinstance(q, (list, tuple)) and len(q) == 6
-            and all(isinstance(v, (int, float)) and math.isfinite(v) and abs(v) <= 2 * math.pi
-                    for v in q))
+            and all(es_numero(v) and abs(v) <= 2 * math.pi for v in q))
 
 
 def distancia(q1, q2):
@@ -127,10 +126,14 @@ class Robot:
                             elif tipo == MSG_ROBOT and describir_error(mensaje):
                                 self.errores.put(describir_error(mensaje))
             except (OSError, ConnectionError, ValueError, struct.error) as e:
-                with self.lock:
-                    self.sock = None
                 print(f"Conexión perdida: {e}. Reintentando en {REINTENTO:.0f} s")
-                time.sleep(REINTENTO)
+            except Exception as e:
+                # Último recurso: si este hilo muriera, la aplicación se quedaría sin datos del
+                # robot para siempre. Se avisa y se reconecta.
+                print(f"Error inesperado en el receptor: {type(e).__name__}: {e}. Reintentando")
+            with self.lock:
+                self.sock = None
+            time.sleep(REINTENTO)
 
     def leer(self):
         """Último estado, o None si hace más de SIN_DATOS que no llega nada."""
@@ -146,15 +149,23 @@ class Robot:
         if sock is None:
             return False
         print(">>", orden.strip())
-        sock.sendall((orden.strip() + "\n").encode())
+        try:
+            sock.sendall((orden.strip() + "\n").encode())
+        except OSError as e:                                # cable cortado justo al enviar
+            print(f"No se pudo enviar: {e}")
+            return False
         return True
 
     def dashboard(self, orden):
-        """Orden de texto al dashboard server (29999). Devuelve su respuesta."""
-        with socket.create_connection((self.host, PUERTO_DASH), timeout=TIMEOUT) as d:
-            d.recv(1024)                                    # mensaje de bienvenida
-            d.sendall((orden + "\n").encode())
-            respuesta = d.recv(1024).decode().strip()
+        """Orden de texto al dashboard server (29999). Devuelve su respuesta ("" si falla)."""
+        try:
+            with socket.create_connection((self.host, PUERTO_DASH), timeout=TIMEOUT) as d:
+                d.recv(1024)                                # mensaje de bienvenida
+                d.sendall((orden + "\n").encode())
+                respuesta = d.recv(1024).decode(errors="replace").strip()
+        except OSError as e:
+            print(f"[DASH] {orden} -> sin respuesta: {e}")
+            return ""
         print(f"[DASH] {orden} -> {respuesta}")
         return respuesta
 
@@ -218,7 +229,8 @@ class Aplicacion:
     # ----- teclas -----
     def tecla(self, t, estado):
         if t == ESC:
-            if self.modo in ("ENVIANDO", "MOVIENDO", "REANUDANDO"):
+            # También en DETENIDO: tras un corte de red el robot puede seguir moviéndose
+            if self.modo in ("ENVIANDO", "MOVIENDO", "REANUDANDO", "DETENIDO"):
                 self.robot.enviar("stopj(2)")
             self.cambiar_modo("REPOSO", "Cancelado")
         elif self.modo == "DETENIDO" and t == ENTER:
@@ -267,6 +279,8 @@ class Aplicacion:
             self.avisar("Sin datos del robot")
         elif estado["modo_robot"] != 7:
             self.avisar("El robot no está en RUNNING: enciéndelo y suelta frenos en PolyScope")
+        elif estado["parada_emergencia"]:
+            self.avisar("Parada de emergencia: suelta la seta y rearma en PolyScope")
         elif estado["parada_proteccion"]:
             self.avisar("El robot está en parada de protección")
         else:
@@ -276,10 +290,17 @@ class Aplicacion:
     def reanudar(self, estado):
         while not self.robot.errores.empty():               # descartar errores antiguos
             self.robot.errores.get()
-        if estado is not None and estado["parada_proteccion"]:
+        if estado is None:
+            self.detener("Sin conexión con el robot")
+            return
+        if estado["parada_emergencia"]:
+            # Una emergencia NO se desbloquea por red: debe hacerlo una persona en el robot
+            self.detener("Parada de emergencia: suelta la seta y rearma en PolyScope")
+            return
+        if estado["parada_proteccion"]:
             respuesta = self.robot.dashboard("unlock protective stop")
             if "releasing" not in respuesta.lower():
-                self.detener(f"No se pudo desbloquear: {respuesta}")
+                self.detener(f"No se pudo desbloquear: {respuesta or 'el dashboard no responde'}")
                 return
             self.robot.dashboard("close safety popup")
         self.cambiar_modo("REANUDANDO", f"Reanudando en el punto {self.paso + 1}")
@@ -297,8 +318,16 @@ class Aplicacion:
 
     def guardar(self):
         ruta = Path(__file__).parent / FICHERO_SECUENCIA
-        ruta.parent.mkdir(exist_ok=True)
-        ruta.write_text(json.dumps(self.puntos, indent=4), encoding="utf-8")
+        temporal = ruta.with_suffix(".tmp")
+        try:
+            ruta.parent.mkdir(parents=True, exist_ok=True)
+            # Primero a un fichero temporal y luego se renombra: si algo falla a medias,
+            # la secuencia guardada antes sigue intacta
+            temporal.write_text(json.dumps(self.puntos, indent=4), encoding="utf-8")
+            temporal.replace(ruta)
+        except OSError as e:
+            self.avisar(f"No se pudo guardar {FICHERO_SECUENCIA}: {e}")
+            return
         self.avisar(f"{len(self.puntos)} puntos guardados en {FICHERO_SECUENCIA}")
 
     def cargar(self):
@@ -307,6 +336,9 @@ class Aplicacion:
             puntos = json.loads(ruta.read_text(encoding="utf-8"))
         except (OSError, ValueError) as e:
             self.avisar(f"No se pudo cargar {FICHERO_SECUENCIA}: {e}")
+            return
+        if not isinstance(puntos, list):
+            self.avisar(f"{FICHERO_SECUENCIA}: debe ser una lista de puntos. No se carga")
             return
         malos = [i + 1 for i, q in enumerate(puntos) if not punto_valido(q)]
         if malos:
@@ -327,8 +359,12 @@ class Aplicacion:
                 self.detener(error)
             elif estado is None:
                 self.detener("Conexión perdida con el robot")
+            elif estado["parada_emergencia"]:
+                self.detener("Parada de emergencia")
             elif estado["parada_proteccion"]:
                 self.detener("Parada de protección")
+            elif estado["modo_robot"] != 7:
+                self.detener("El robot ha dejado de estar en RUNNING (¿apagado? ¿frenos?)")
             elif self.modo == "ENVIANDO":
                 if estado["programa_en_marcha"]:
                     self.cambiar_modo("MOVIENDO")
@@ -349,7 +385,8 @@ class Aplicacion:
                 self.detener(f"El movimiento dura más de {TIEMPO_MAX_MOVIMIENTO} s")
 
         elif self.modo == "REANUDANDO":
-            if estado is not None and not estado["parada_proteccion"] and estado["modo_robot"] == 7:
+            if (estado is not None and not estado["parada_proteccion"]
+                    and not estado["parada_emergencia"] and estado["modo_robot"] == 7):
                 self.enviar_punto()                         # reenviar el punto pendiente
             elif ahora - self.t_modo > 5:
                 self.detener("El robot no se recupera de la parada")
@@ -438,6 +475,8 @@ def main():
     print(f"Robot: {config['nombre']} ({config['host']}:{config['puerto']})")
     if config["puerto"] != 30001:
         raise SystemExit("Para enviar órdenes hace falta el puerto 30001 (el 30011 es de solo lectura)")
+    if not (0 < V <= 0.3 and 0 < A <= 0.5):
+        raise SystemExit("V y A superan los límites de la práctica (0,3 rad/s y 0,5 rad/s²)")
 
     from UR3e_rg2.dynamic_ur3e import UR3eRG2
     escena = UR3eRG2()                                      # robot 0: el real
@@ -473,6 +512,14 @@ def main():
             time.sleep(max(0.0, siguiente - time.monotonic()))
     except KeyboardInterrupt:
         print("\nFin")
+    except p.error:
+        print("Ventana de PyBullet cerrada. Fin")
+    finally:
+        # Salga como salga el programa (Ctrl+C, ventana cerrada o un fallo inesperado),
+        # si el robot se estaba moviendo por nosotros, se para
+        if app.modo in ("ENVIANDO", "MOVIENDO", "REANUDANDO"):
+            robot.enviar("stopj(2)")
+            print("Robot parado con stopj al salir")
 
 
 if __name__ == "__main__":

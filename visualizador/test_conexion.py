@@ -11,6 +11,7 @@ Cómo usarlo: cambia las constantes de CONFIGURACIÓN y pulsa F5 (o ▶) en VS C
 
 import math
 import socket
+import struct
 import time
 
 from primaria import cargar_robots, cortar_mensajes, leer_estado, mostrar_mensaje_robot, grados
@@ -57,10 +58,10 @@ def siguiente_estado(lector):
 def preparar(host):
     """Enciende el robot y suelta los frenos con comandos de texto al dashboard."""
     with socket.create_connection((host, PUERTO_DASH), timeout=5) as d:
-        print("[DASH]", d.recv(1024).decode().strip())      # mensaje de bienvenida
+        print("[DASH]", d.recv(1024).decode(errors="replace").strip())   # mensaje de bienvenida
         for orden in ("power on", "brake release"):
             d.sendall((orden + "\n").encode())
-            print(f"[DASH] {orden} ->", d.recv(1024).decode().strip())
+            print(f"[DASH] {orden} ->", d.recv(1024).decode(errors="replace").strip())
             time.sleep(2)
     time.sleep(3)                                           # tarda en soltar frenos
 
@@ -73,7 +74,9 @@ def mover(sock, lector, objetivo, timeout=15):
     2) vuelve a False (ha terminado)
     3) q_actual está cerca del objetivo
     """
-    assert all(-2 * math.pi <= v <= 2 * math.pi for v in objetivo), "ángulo fuera de rango"
+    # No con assert: python -O se salta los assert, y esto protege al robot
+    if not all(math.isfinite(v) and abs(v) <= 2 * math.pi for v in objetivo):
+        raise ValueError(f"Ángulo fuera de rango: {objetivo}")
     orden = f"movej([{', '.join(f'{v:.5f}' for v in objetivo)}], a={A}, v={V})\n"
     print(">>", orden.strip())
     sock.sendall(orden.encode())                            # el '\n' final es obligatorio
@@ -129,12 +132,27 @@ def main():
             print("El robot no está en RUNNING: enciéndelo en PolyScope o pon PREPARAR = True")
             return
 
+        if estado["parada_proteccion"] or estado["parada_emergencia"]:
+            print("El robot está parado por seguridad: desbloquéalo en PolyScope")
+            return
+
         inicio = list(estado["q"])
         destino = inicio.copy()
         destino[0] += math.radians(max(-30.0, min(30.0, GIRO_BASE)))
-        ok = mover(sock, lector, destino) and mover(sock, lector, inicio)
+        try:
+            ok = mover(sock, lector, destino) and mover(sock, lector, inicio)
+        except KeyboardInterrupt:
+            sock.sendall(b"stopj(2)\n")                     # no dejar el robot moviéndose
+            print("\nInterrumpido: robot parado con stopj")
+            return
         print("MOVIMIENTO OK" if ok else "MOVIMIENTO FALLIDO")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nFin")
+    except (OSError, ConnectionError, ValueError, struct.error) as e:
+        print(f"Error de comunicación: {e}")
+        print("¿Robot encendido? ¿IP de robots.json correcta? ¿Misma red que el robot?")

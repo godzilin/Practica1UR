@@ -16,6 +16,8 @@ import struct
 import time
 from pathlib import Path
 
+import pybullet as p
+
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
 # =====================================================================
@@ -48,17 +50,46 @@ SUB_ARTICULACIONES = 1      # subpaquete Joint data
 # =====================================================================
 
 
-def cargar_robots():
-    """Lee robots.json y comprueba que cada robot tiene todo lo necesario."""
-    ruta = Path(__file__).with_name(FICHERO_ROBOTS)
-    robots = json.loads(ruta.read_text(encoding="utf-8"))
+def es_numero(v):
+    """int o float finito (True/False no cuentan, aunque en Python sean int)."""
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
+def cargar_robots(fichero=FICHERO_ROBOTS):
+    """Lee robots.json y comprueba que cada robot tiene todo lo necesario.
+
+    Cualquier fallo del fichero termina el programa con un mensaje claro, no con un traceback.
+    """
+    ruta = Path(__file__).parent / fichero                   # una ruta absoluta se usa tal cual
+    try:
+        robots = json.loads(ruta.read_text(encoding="utf-8"))
+    except OSError as e:
+        raise SystemExit(f"No se puede leer {ruta}: {e}")
+    except ValueError as e:                                 # JSON mal escrito (coma, comillas...)
+        raise SystemExit(f"{fichero} no es un JSON válido: {e}")
+
+    if not isinstance(robots, list) or not robots:
+        raise SystemExit(f"{fichero}: debe ser una lista [ ... ] con al menos un robot")
+    nombres = set()
     for r in robots:
+        if not isinstance(r, dict):
+            raise SystemExit(f"{fichero}: cada robot debe ser un objeto {{ ... }}, no {r!r}")
         for clave in ("nombre", "host", "puerto", "posicion"):
             if clave not in r:
-                raise SystemExit(f"{FICHERO_ROBOTS}: al robot {r} le falta '{clave}'")
-        if len(r["posicion"]) != 6:
-            raise SystemExit(f"{FICHERO_ROBOTS}: 'posicion' de {r['nombre']} debe ser "
-                             "[x, y, z, roll, pitch, yaw]")
+                raise SystemExit(f"{fichero}: al robot {r} le falta '{clave}'")
+        nombre = r["nombre"]
+        if not isinstance(nombre, str) or not nombre or nombre in nombres:
+            raise SystemExit(f"{fichero}: el nombre {nombre!r} está vacío o repetido")
+        nombres.add(nombre)
+        if not isinstance(r["host"], str) or not r["host"].strip():
+            raise SystemExit(f"{fichero}: 'host' de {nombre} debe ser una IP entre comillas")
+        if not isinstance(r["puerto"], int) or isinstance(r["puerto"], bool) \
+                or not 1 <= r["puerto"] <= 65535:
+            raise SystemExit(f"{fichero}: 'puerto' de {nombre} debe ser un entero (p. ej. 30001)")
+        pos = r["posicion"]
+        if not isinstance(pos, list) or len(pos) != 6 or not all(es_numero(v) for v in pos):
+            raise SystemExit(f"{fichero}: 'posicion' de {nombre} debe ser "
+                             "[x, y, z, roll, pitch, yaw] (6 números)")
     return robots
 
 
@@ -103,9 +134,10 @@ def leer_estado(mensaje):
     estado = {}
     for tipo, pos, tam in subpaquetes(mensaje):
         datos = pos + 5                                     # primer byte después de la cabecera
-        if tipo == SUB_MODO:
-            # uint64 timestamp (8 B) y 7 bool: ..., isProtectiveStopped (byte 12),
-            # isProgramRunning (13), isProgramPaused (14); robotMode en el byte 15
+        if tipo == SUB_MODO and tam >= 5 + 16:
+            # uint64 timestamp (8 B) y 7 bool: ..., isEmergencyStopped (byte 11),
+            # isProtectiveStopped (12), isProgramRunning (13), isProgramPaused (14); robotMode en el 15
+            estado["parada_emergencia"] = bool(mensaje[datos + 11])
             estado["parada_proteccion"] = bool(mensaje[datos + 12])
             estado["programa_en_marcha"] = bool(mensaje[datos + 13])
             estado["modo_robot"] = mensaje[datos + 15]
@@ -113,7 +145,11 @@ def leer_estado(mensaje):
             # 6 articulaciones de 41 B (>dddffffB). El primer double es q_actual.
             if tam != 5 + 6 * 41:
                 print(f"AVISO: el subpaquete de articulaciones mide {tam} B, no 251")
-            estado["q"] = [struct.unpack_from(">d", mensaje, datos + 41 * j)[0] for j in range(6)]
+                if tam < 5 + 6 * 41:
+                    continue                                # no caben los 6 ángulos
+            q = [struct.unpack_from(">d", mensaje, datos + 41 * j)[0] for j in range(6)]
+            if all(math.isfinite(v) for v in q):            # un NaN no se dibuja ni se guarda
+                estado["q"] = q
     return estado
 
 
@@ -124,6 +160,8 @@ def describir_error(mensaje):
     el texto puede venir vacío, así que se muestra el código como en PolyScope: C<código>A<arg>.
     Subtipo 10: excepción del programa URScript, con la línea y la columna del fallo.
     """
+    if len(mensaje) < 23:                                   # demasiado corto: no es un error completo
+        return None
     subtipo = mensaje[14]
     if subtipo == 6:
         codigo, argumento = struct.unpack_from(">ii", mensaje, 15)
@@ -138,9 +176,13 @@ def describir_error(mensaje):
 
 def mostrar_mensaje_robot(mensaje):
     """Mensajes tipo 20. Su subtipo está en el byte 14: versión (3), error (6), excepción (10)."""
+    if len(mensaje) < 16:
+        return
     subtipo = mensaje[14]
     if subtipo == 3:
         n = mensaje[15]                                     # longitud del nombre
+        if len(mensaje) < 18 + n:
+            return
         nombre = mensaje[16:16 + n].decode(errors="replace")
         print(f"Versión: {nombre} {mensaje[16 + n]}.{mensaje[17 + n]}")
     elif describir_error(mensaje):
@@ -213,11 +255,15 @@ def main():
         while True:
             try:
                 conectar_y_visualizar(robot, config["host"], config["puerto"])
+            except p.error:
+                raise                                       # la ventana no es la red: no reintentar
             except (OSError, ConnectionError, ValueError, struct.error) as e:
                 print(f"Conexión perdida: {e}. Reintentando en {REINTENTO:.0f} s")
                 time.sleep(REINTENTO)
     except KeyboardInterrupt:
         print("\nFin")
+    except p.error:
+        print("Ventana de PyBullet cerrada. Fin")
 
 
 if __name__ == "__main__":
