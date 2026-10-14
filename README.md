@@ -25,7 +25,7 @@ uv pip install --python venv/bin/python material/ur3e_rg2-0.1.0-py3-none-any.whl
 
 ## Red
 
-- URSim (VirtualBox, modo puente): `10.172.18.67`
+- URSim (VirtualBox, modo puente): `10.172.18.67` y `10.172.18.73`
 - UR3e reales (laboratorio de robótica): `10.172.21.203` a `.206`
 
 ## Uso
@@ -36,6 +36,7 @@ abrir el script, cambiar las constantes de `CONFIGURACIÓN` del principio y puls
 - `visualizador/test_conexion.py`: lee versión, modo y q_actual; con `MOVER = True` gira la base y vuelve
 - `visualizador/primaria.py`: visualizador; `MODO` = `"angulos"` (A4/A5), `"bytes"` (A1) o `"mensajes"` (A2/A3)
 - `visualizador/tiempo_real.py`: visualizador a 500 Hz; `MODO` = `"angulos"` (B2–B4) o `"paquetes"` (B1); `FPS` de dibujo
+- `visualizador/varios_robots.py`: varios robots en la misma ventana; los robots se configuran en `visualizador/robots.json` (nombre, host, puerto, posición `[x, y, z, roll, pitch, yaw]`)
 
 ## Hitos
 
@@ -48,5 +49,7 @@ abrir el script, cambiar las constantes de `CONFIGURACIÓN` del principio y puls
 - [x] B1–B4 · `tiempo_real.py` (30003)
   - URSim 5.25: paquetes de 1220 B, ~480/s (la VM simula un 4 % más lenta que el tiempo real:
     el reloj del robot avanza 2 ms por paquete pero solo 3,83 s cada 4 s reales)
-- [ ] C · varios robots, hilo por conexión, configuración en fichero
+- [x] C · `varios_robots.py` + `robots.json`: hilo receptor por robot, `Lock`, un único bucle de dibujo
+  - Probado con las dos VMs: ambos siguen a su URSim; red a `.73` cortada 10 s → su etiqueta pasa a
+    roja "SIN DATOS" y se congela, `URSim_1` sigue moviéndose; al volver la red reconecta solo
 - [ ] D · enseñar y reproducir (URScript, `movej`)
