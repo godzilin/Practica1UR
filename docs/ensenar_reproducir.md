@@ -1,7 +1,7 @@
 # Mini-aplicación «Enseñar y reproducir» · Bloque D (sobresaliente)
 
 Documento de diseño: qué pide el enunciado, cómo lo resolvemos y cómo se demuestra en la defensa.
-Script previsto: `visualizador/ensenar_reproducir.py`.
+Script: `visualizador/ensenar_reproducir.py`.
 
 ## 1. Qué pide el enunciado
 
@@ -187,14 +187,35 @@ Cada fase se cierra con su comprobación contra URSim, un commit y un push.
 | Fase | Qué | Cómo se comprueba | Estado |
 |---|---|---|---|
 | D0 | Experimentos: qué mensajes envía URSim ante un URScript erróneo y una parada de protección; transparencia en PyBullet | Ver tipos y subtipos con `primaria.py` en `MODO = "mensajes"` | Hecho (sección 5) |
-| D1 | Esqueleto: hilo receptor con estado completo + bucle con teclado y texto en pantalla | El robot se mueve en la ventana y las teclas se reconocen | Pendiente |
-| D2 | Enviar un `movej` y confirmarlo sin bloquear | Un punto ejecutado y confirmado con la ventana fluida | Pendiente |
-| D3 | Enseñar: Espacio, deslizadores, ← →, Supr | 4 puntos guardados | Pendiente |
-| D4 | Previsualizar con el fantasma | El fantasma recorre la secuencia, el real no se mueve | Pendiente |
-| D5 | Ejecutar la secuencia completa | 4 puntos ejecutados, cada uno confirmado | Pendiente |
-| D6 | Supervisión: detener, mostrar el motivo, reanudar o cancelar | Error provocado → detenido con motivo → reanudar | Pendiente |
-| D7 | Guardar y cargar | Guardar, reiniciar el programa, cargar y ejecutar | Pendiente |
-| D8 | Ensayo de la defensa en URSim y checklist del robot real | Guion de la sección 6 completo | Pendiente |
+| D1 | Esqueleto: hilo receptor con estado completo + bucle con teclado y texto en pantalla | El robot se mueve en la ventana y las teclas se reconocen | Hecho |
+| D2 | Enviar un `movej` y confirmarlo sin bloquear | Un punto ejecutado y confirmado con la ventana fluida | Hecho |
+| D3 | Enseñar: Espacio, deslizadores, ← →, Supr | 4 puntos guardados | Hecho |
+| D4 | Previsualizar con el fantasma | El fantasma recorre la secuencia, el real no se mueve | Hecho |
+| D5 | Ejecutar la secuencia completa | 4 puntos ejecutados, cada uno confirmado | Hecho |
+| D6 | Supervisión: detener, mostrar el motivo, reanudar o cancelar | Error provocado → detenido con motivo → reanudar | Hecho |
+| D7 | Guardar y cargar | Guardar, reiniciar el programa, cargar y ejecutar | Hecho |
+| D8 | Ensayo de la defensa en URSim y checklist del robot real | Guion de la sección 6 completo | Ensayo automático hecho; falta el ensayo manual con teclado |
+
+### Prueba automática del guion de la defensa
+
+Un guion simula las teclas contra URSim (`10.172.18.67`) y recorre la defensa completa
+(ejecutado el 2026-10-14):
+
+| Paso | Resultado |
+|---|---|
+| Enseñar 4 puntos: 3 con Espacio moviendo URSim y 1 con D (deslizadores) | 4 puntos guardados; ← → recorre la lista |
+| G | Secuencia guardada en JSON |
+| P | El fantasma recorre los 4 tramos en 3,5 s; el robot real no se mueve |
+| Enter | 4 puntos ejecutados, cada uno confirmado (`isProgramRunning` y `q_actual`) en 14 s |
+| Enter y E a mitad del punto 1 | `DETENIDO: Error del robot C209A0` en 0,1 s |
+| Enter (reanudar) tras 6 s | Dashboard: `Protective stop releasing`; reenvía el punto 1 y completa la secuencia |
+| Enter y Esc a mitad | `stopj(2)`, el programa del robot se para, vuelve a REPOSO |
+| C | 4 puntos cargados y validados |
+
+**Falta comprobar a mano** (no se puede automatizar desde aquí): que las teclas se reciben con la
+ventana de PyBullet activa (en especial que **Esc** no cierre la ventana) y que los textos se leen bien.
+Si al usar la pestaña Mover de PolyScope el robot está en modo remoto y no deja moverlo, enseñar en
+modo Local y pasar a Remoto para ejecutar, o enseñar con los deslizadores (D).
 
 ## 7. Guion para la defensa
 

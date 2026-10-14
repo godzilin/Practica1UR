@@ -42,6 +42,7 @@ usa todos.
 - `visualizador/test_conexion.py`: lee versión, modo y q_actual; con `MOVER = True` gira la base y vuelve
 - `visualizador/primaria.py`: visualizador; `MODO` = `"angulos"` (A4/A5), `"bytes"` (A1) o `"mensajes"` (A2/A3)
 - `visualizador/tiempo_real.py`: visualizador a 500 Hz; `MODO` = `"angulos"` (B2–B4) o `"paquetes"` (B1); `FPS` de dibujo
+- `visualizador/ensenar_reproducir.py`: mini-aplicación Enseñar y reproducir; teclas con la ventana de PyBullet activa (Espacio, ← →, Supr, D, P, Enter, Esc, G/C, E)
 - `visualizador/varios_robots.py`: varios robots en la misma ventana; los robots se configuran en `visualizador/robots.json` (nombre, host, puerto, posición `[x, y, z, roll, pitch, yaw]`)
 
 ## Entrega y evaluación (apartado 11 del enunciado)
@@ -104,4 +105,6 @@ presente con la seta de emergencia al alcance.
 - [x] C · `varios_robots.py` + `robots.json`: hilo receptor por robot, `Lock`, un único bucle de dibujo
   - Probado con las dos VMs: ambos siguen a su URSim; red a `.73` cortada 10 s → su etiqueta pasa a
     roja "SIN DATOS" y se congela, `URSim_1` sigue moviéndose; al volver la red reconecta solo
-- [ ] D · enseñar y reproducir (URScript, `movej`): diseño, plan y guion de defensa en [`docs/ensenar_reproducir.md`](docs/ensenar_reproducir.md)
+- [x] D · `ensenar_reproducir.py`: enseñar, previsualizar con fantasma, ejecutar con confirmación, supervisión de errores, guardar/cargar. Diseño, pruebas y guion de defensa en [`docs/ensenar_reproducir.md`](docs/ensenar_reproducir.md)
+  - [ ] Probar a mano las teclas en la ventana de PyBullet
+  - [ ] Validación en un UR3e real con el profesor

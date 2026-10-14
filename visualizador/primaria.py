@@ -117,6 +117,25 @@ def leer_estado(mensaje):
     return estado
 
 
+def describir_error(mensaje):
+    """Texto de un mensaje de error tipo 20, o None si no es un error.
+
+    Subtipo 6: error del robot (p. ej. parada de protección). Lleva un código y un argumento;
+    el texto puede venir vacío, así que se muestra el código como en PolyScope: C<código>A<arg>.
+    Subtipo 10: excepción del programa URScript, con la línea y la columna del fallo.
+    """
+    subtipo = mensaje[14]
+    if subtipo == 6:
+        codigo, argumento = struct.unpack_from(">ii", mensaje, 15)
+        texto = mensaje[32:].decode(errors="replace").strip("\x00 ")
+        return f"Error del robot C{codigo}A{argumento}" + (f": {texto}" if texto else "")
+    if subtipo == 10:
+        linea, columna = struct.unpack_from(">ii", mensaje, 15)
+        return (f"Excepción en línea {linea}, columna {columna}: "
+                f"{mensaje[23:].decode(errors='replace')}")
+    return None
+
+
 def mostrar_mensaje_robot(mensaje):
     """Mensajes tipo 20. Su subtipo está en el byte 14: versión (3), error (6), excepción (10)."""
     subtipo = mensaje[14]
@@ -124,12 +143,8 @@ def mostrar_mensaje_robot(mensaje):
         n = mensaje[15]                                     # longitud del nombre
         nombre = mensaje[16:16 + n].decode(errors="replace")
         print(f"Versión: {nombre} {mensaje[16 + n]}.{mensaje[17 + n]}")
-    elif subtipo == 6:
-        print(f"ERROR del robot: {mensaje[32:].decode(errors='replace')}")
-    elif subtipo == 10:
-        linea, columna = struct.unpack_from(">ii", mensaje, 15)
-        print(f"EXCEPCIÓN en línea {linea}, columna {columna}: "
-              f"{mensaje[23:].decode(errors='replace')}")
+    elif describir_error(mensaje):
+        print(describir_error(mensaje))
 
 
 def grados(q):
