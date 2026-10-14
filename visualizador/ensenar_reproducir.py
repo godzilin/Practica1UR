@@ -25,6 +25,7 @@ Cómo usarlo: pon el robot el primero de robots.json y pulsa F5 (o ▶) en VS Co
 import json
 import math
 import textwrap
+import unicodedata
 import queue
 import socket
 import struct
@@ -575,8 +576,14 @@ class Aplicacion:
             return
         posicion = [e + y_px * b for e, b in zip(self.esquina, self.abajo)]
         kwargs = {"replaceItemUniqueId": anterior[0]} if anterior else {}
-        id_ = p.addUserDebugText(texto, posicion, color, textSize=tam, **kwargs)
+        id_ = p.addUserDebugText(solo_ascii(texto), posicion, color, textSize=tam, **kwargs)
         self.textos[fila] = (id_, contenido)
+
+
+def solo_ascii(texto):
+    """PyBullet corta el texto en la primera letra no ASCII («dónde» se vería «d»): á -> a, ñ -> n."""
+    texto = texto.replace("·", "-").replace("°", "o")
+    return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
 
 
 def leer_teclas():
