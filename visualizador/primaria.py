@@ -47,6 +47,8 @@ MSG_ESTADO = 16             # Robot State Message: llega 10 veces por segundo
 MSG_ROBOT = 20              # Robot Message: versión, errores, excepciones...
 SUB_MODO = 0                # subpaquete Robot mode data
 SUB_ARTICULACIONES = 1      # subpaquete Joint data
+MODOS_ROBOT = {0: "DISCONNECTED", 1: "CONFIRM_SAFETY", 2: "BOOTING", 3: "POWER_OFF",
+               4: "POWER_ON", 5: "IDLE", 6: "BACKDRIVE", 7: "RUNNING"}    # robotMode
 # =====================================================================
 
 

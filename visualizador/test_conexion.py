@@ -14,7 +14,7 @@ import socket
 import struct
 import time
 
-from primaria import cargar_robots, cortar_mensajes, leer_estado, mostrar_mensaje_robot, grados
+from primaria import cargar_robots, cortar_mensajes, leer_estado, mostrar_mensaje_robot, grados, MODOS_ROBOT
 
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
@@ -28,9 +28,6 @@ TOLERANCIA = 0.01           # rad: error máximo para dar el movimiento por buen
 PUERTO = 30001              # interfaz primaria (acepta órdenes URScript; la 30011 no)
 PUERTO_DASH = 29999         # dashboard server
 # =====================================================================
-
-MODOS_ROBOT = {0: "DISCONNECTED", 1: "CONFIRM_SAFETY", 2: "BOOTING", 3: "POWER_OFF",
-               4: "POWER_ON", 5: "IDLE", 6: "BACKDRIVE", 7: "RUNNING"}
 
 
 def mensajes(sock):

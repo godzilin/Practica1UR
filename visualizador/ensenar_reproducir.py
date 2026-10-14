@@ -33,7 +33,7 @@ from pathlib import Path
 import pybullet as p
 
 from primaria import (cargar_robots, cortar_mensajes, leer_estado, describir_error, grados,
-                      es_numero, SIGNOS, OFFSETS, MSG_ESTADO, MSG_ROBOT)
+                      es_numero, SIGNOS, OFFSETS, MSG_ESTADO, MSG_ROBOT, MODOS_ROBOT)
 
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
@@ -135,6 +135,11 @@ class Robot:
                 self.sock = None
             time.sleep(REINTENTO)
 
+    def conectado(self):
+        """Hay conexión TCP abierta (aunque aún no haya llegado ningún estado)."""
+        with self.lock:
+            return self.sock is not None
+
     def leer(self):
         """Último estado, o None si hace más de SIN_DATOS que no llega nada."""
         with self.lock:
@@ -197,6 +202,7 @@ class Aplicacion:
         self.deslizadores = None        # últimos valores leídos
         self.deslizadores_listos = False  # ya puestos en la postura del robot
         self.textos = {}                # ids de los textos de la ventana
+        self.situacion = "nunca"        # None: sin datos · True/False: robot en RUNNING o no
 
     # ----- utilidades -----
     def cambiar_modo(self, modo, aviso=None):
@@ -373,6 +379,24 @@ class Aplicacion:
         ahora = time.monotonic()
         error = None if self.robot.errores.empty() else self.robot.errores.get()
 
+        # Avisar cuando se pierde o vuelve el robot, o cambia entre encendido y apagado
+        # (si no, el último aviso se queda en pantalla aunque ya no sea cierto)
+        situacion = None if estado is None else estado["modo_robot"] == 7
+        if situacion != self.situacion and not (situacion is None and self.situacion == "nunca"):
+            primera_vez = self.situacion == "nunca"     # el aviso inicial lo da iniciar_deslizadores
+            self.situacion = situacion
+            if primera_vez:
+                pass
+            elif situacion is None:
+                self.avisar("Conexión perdida con el robot: reintentando...")
+            else:
+                nombre = MODOS_ROBOT.get(estado["modo_robot"], estado["modo_robot"])
+                aviso = ("Robot conectado y en RUNNING" if situacion else
+                         f"Robot en {nombre}: enciéndelo y suelta frenos en PolyScope")
+                if self.modo == "DETENIDO":
+                    aviso += ". Enter: reanudar · Esc: cancelar"
+                self.avisar(aviso)
+
         if self.modo in ("ENVIANDO", "MOVIENDO"):
             objetivo = self.puntos[self.paso]
             if error:
@@ -459,15 +483,23 @@ class Aplicacion:
 
         # Textos de la ventana
         if estado is None:
-            linea_estado = "SIN CONEXIÓN CON EL ROBOT"
+            linea_estado = ("CONECTADO, ESPERANDO DATOS DEL ROBOT" if self.robot.conectado()
+                            else "SIN CONEXIÓN CON EL ROBOT")
         elif self.modo in ("ENVIANDO", "MOVIENDO"):
             linea_estado = f"{self.modo} {self.paso + 1}/{len(self.puntos)}"
         else:
             linea_estado = self.modo
+        if estado is not None and estado["modo_robot"] != 7:      # p. ej. recién arrancado URSim
+            linea_estado += f" · robot {MODOS_ROBOT.get(estado['modo_robot'], estado['modo_robot'])}"
         puntos = (f"Puntos: {len(self.puntos)}" +
                   (f" · seleccionado {self.sel + 1}" if self.puntos else "") +
                   (" · fantasma = deslizadores" if self.ver_deslizadores and self.modo == "REPOSO" else ""))
-        color = [0.8, 0, 0] if self.modo == "DETENIDO" or estado is None else [0, 0, 0]
+        if self.modo == "DETENIDO" or estado is None:
+            color = [0.8, 0, 0]                             # rojo: hay que hacer algo
+        elif estado["modo_robot"] != 7:
+            color = [0.9, 0.5, 0]                           # naranja: conectado, robot sin encender
+        else:
+            color = [0, 0, 0]
         self.texto("estado", linea_estado, 1.25, color, 1.8)
         self.texto("aviso", self.aviso, 1.17, color, 1.2)
         self.texto("puntos", puntos, 1.10, [0, 0, 0], 1.2)
