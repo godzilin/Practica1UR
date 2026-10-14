@@ -173,6 +173,24 @@ class Documento:
             r = q.add_run(pie)
             r.italic, r.font.size, r.font.color.rgb = True, Pt(9.5), GRIS
 
+    def lado_a_lado(self, nombre, ancho_cm, puntos, pie=None):
+        """Figura a la izquierda y frases cortas a la derecha (ahorra espacio)."""
+        t = self.doc.add_table(rows=1, cols=2)
+        sin_bordes(t)
+        izq, der = t.cell(0, 0), t.cell(0, 1)
+        izq.width, der.width = Cm(ancho_cm + 0.3), Cm(17 - ancho_cm - 0.3)
+        p = izq.paragraphs[0]
+        p.add_run().add_picture(str(FIGURAS / nombre), width=Cm(ancho_cm))
+        if pie:
+            q = izq.add_paragraph()
+            r = q.add_run(pie)
+            r.italic, r.font.size, r.font.color.rgb = True, Pt(9), GRIS
+        for i, texto in enumerate(puntos):
+            q = der.paragraphs[0] if i == 0 else der.add_paragraph()
+            q.paragraph_format.space_after = Pt(5)
+            texto_rico(q, "• " + texto)
+        self.doc.add_paragraph().paragraph_format.space_after = Pt(0)
+
     def tabla(self, filas, anchos):
         t = self.doc.add_table(rows=len(filas), cols=len(filas[0]))
         t.style = "Table Grid"
@@ -201,51 +219,49 @@ class Documento:
 # ---------------------------------------------------------------------
 m = Documento(tam=11)
 m.titulo("Visualizador de un UR3e por TCP/IP", f"Memoria de la práctica · código en {REPO}")
+m.parrafo("Cuatro programas que leen por la red el estado de un brazo **UR3e** (real o URSim) y lo muestran "
+          "en 3D con **PyBullet**, de menos a más: una interfaz, otra más rápida, varios robots y, por último, "
+          "una aplicación que además da órdenes al robot. Todos se lanzan con F5 y leen las IP de `robots.json`.")
 
-m.seccion("1. Qué hace")
-m.parrafo("Lee por la red el estado de un brazo **UR3e** (real o simulado con URSim) y lo reproduce en 3D "
-          "con **PyBullet**. Encima, una mini-aplicación permite **enseñar posturas** al robot y repetirlas.")
-m.figura("captura.png", 14.5, "Fig. 1 · Aplicación conectada a URSim. Gris: el robot. "
-                              "Azul: el punto que va a ejecutar («fantasma»).")
-
-m.seccion("2. Arquitectura")
-m.figura("arquitectura.png", 15, "Fig. 2 · Quién hace qué: recibir, guardar el último estado y dibujar.")
-m.punto("**Un hilo por robot solo recibe.** Si un robot se cuelga, solo se bloquea su hilo.")
-m.punto("**Un único bucle dibuja y envía órdenes.** PyBullet nunca se usa desde dos hilos.")
-m.punto("**Lock** en el estado compartido: nunca se lee un estado a medio escribir.")
-
-m.seccion("3. Leer un flujo TCP")
-m.figura("mensaje.png", 15, "Fig. 3 · De los bytes que llegan por TCP a los 6 ángulos del robot.")
+m.seccion("A · Interfaz primaria (primaria.py)")
+m.figura("mensaje.png", 13.5, "Fig. 1 · De los bytes que llegan por TCP a los 6 ángulos del robot.")
 m.punto("**Un recv() no es un mensaje:** en un minuto hubo 1110 `recv()` de 11 tamaños distintos. "
         "Se acumula en un buffer y se corta leyendo la longitud de cada mensaje.")
-m.punto("**Subpaquetes que no interesan:** se saltan sumando su longitud, sin entenderlos.")
-m.punto("**Big-endian:** el robot ordena los bytes al revés que el PC; se indica con `>`.")
+m.punto("Del mensaje de estado (tipo 16) solo interesa el **subpaquete 1**; los demás se saltan con su longitud.")
+m.punto("Números en **big-endian** (`>`). Si se corta la conexión, **reconecta solo**.")
 
-m.seccion("4. Las cuatro tareas")
-m.tabla([
-    ["Tarea", "Script", "Idea clave"],
-    ["A · Primaria", "`primaria.py`", "Puerto 30001 · 10 estados/s · ángulos del subpaquete 1"],
-    ["B · Tiempo real", "`tiempo_real.py`", "Puerto 30003 · ~500 paquetes/s · se queda el último y dibuja 30/s"],
-    ["C · Varios robots", "`varios_robots.py`", "Un hilo por robot · «SIN DATOS» en rojo si uno se cae"],
-    ["D · Enseñar y reproducir", "`ensenar_reproducir.py`", "Enseñar · previsualizar · ejecutar y confirmar"],
-], [4.0, 4.4, 8.6])
+m.seccion("B · Interfaz de tiempo real (tiempo_real.py)")
+m.figura("tiempo_real.png", 13.5, "Fig. 2 · Paquete del puerto 30003 y ritmo de llegada frente al de dibujo.")
+m.punto("Estructura fija: los ángulos están **siempre en el byte 252**. No hace falta recorrer subpaquetes.")
+m.punto("Llegan ~500 paquetes/s (URSim da ~480), demasiados para dibujarlos todos: se leen todos, **se guarda "
+        "solo el último** y se dibuja 30 veces por segundo.")
 
-m.seccion("5. Enseñar y reproducir")
-m.parrafo("Una **máquina de estados** lleva la secuencia. El robot no responde a un `movej`: "
-          "hay que deducir del estado que publica si lo ha cumplido.")
-m.figura("estados.png", 12, "Fig. 4 · Máquina de estados de la secuencia.")
-m.figura("movej.png", 15, "Fig. 5 · Datos reales de URSim. Un punto se da por bueno cuando el programa "
-                          "termina y el ángulo está a menos de 0,01 rad del objetivo.")
+m.seccion("C · Varios robots (varios_robots.py)")
+m.lado_a_lado("captura_varios.png", 8.5, [
+    "**Un hilo por robot**, cada uno con su socket y su buffer: si uno se cuelga, solo se bloquea su hilo.",
+    "Los hilos dejan el último estado en un diccionario protegido con un **Lock**; un único bucle lo lee y dibuja.",
+    "Si un robot deja de enviar 1 s, su nombre pasa a rojo **«SIN DATOS»** y se queda quieto.",
+], "Fig. 3 · Dos URSim y un robot apagado.")
+m.figura("arquitectura.png", 13.5, "Fig. 4 · Estructura de C y D: recibir, guardar el último estado y dibujar.")
 
-m.seccion("6. Además")
+m.seccion("D · Enseñar y reproducir (ensenar_reproducir.py)")
+m.lado_a_lado("captura.png", 8.5, [
+    "**Enseñar:** Espacio guarda la postura del robot como punto.",
+    "**Previsualizar:** un robot «fantasma» azul recorre los puntos sin mover el real.",
+    "**Ejecutar:** envía un `movej` por punto por el mismo socket 30001 y **confirma** cada uno.",
+], "Fig. 5 · Gris: el robot. Azul: el punto que va a ejecutar.")
+m.figura("estados.png", 10, "Fig. 6 · Máquina de estados. Ante un error o parada se detiene y muestra el motivo.")
+m.figura("movej.png", 13.5, "Fig. 7 · Datos reales de URSim. El robot no responde a un movej: el punto se da por "
+                            "bueno cuando el programa termina y el ángulo está a menos de 0,01 rad.")
+
+m.seccion("Además")
 m.punto(f"**Repositorio GitHub** ({REPO}): cada cambio es un commit; README con instalación y uso.")
 m.punto("**A prueba de fallos:** reconexión automática, mensajes corruptos descartados, configuración "
         "validada. Probado con 20 000 mensajes rotos, cortes de red y URSim reiniciado.")
 m.punto("**Seguridad:** `stopj` si el programa se cierra con el robot en marcha; velocidad ≤ 0,3 rad/s; "
         "una parada de emergencia nunca se desbloquea por red.")
-m.punto("**Fácil de usar:** F5 en VS Code, ajustes como constantes al principio, IP en `robots.json`.")
 
-m.seccion("7. Robot real")
+m.seccion("Robot real")
 m.parrafo("**[Completar tras la sesión: qué UR3e se usó y diferencias con URSim.]**")
 m.guardar("memoria.docx")
 

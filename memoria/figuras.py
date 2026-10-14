@@ -47,6 +47,39 @@ img = mpimg.imread(DATOS / "captura_app.png")
 plt.imsave(SALIDA / "captura.png", img[0:470, 0:860])
 
 
+# Captura de varios robots (bloque C)
+img = mpimg.imread(DATOS / "captura_varios.png")
+plt.imsave(SALIDA / "captura_varios.png", img[150:420, 280:900])
+
+
+# ---------------------------------------------------------------------
+# Interfaz de tiempo real (bloque B): un paquete y el ritmo de llegada frente al de dibujo
+# ---------------------------------------------------------------------
+fig, (a1, a2) = plt.subplots(2, 1, figsize=(7.2, 2.6), gridspec_kw={"height_ratios": [1, 1.1]})
+a1.set_xlim(0, 1220), a1.set_ylim(0, 1), a1.axis("off")
+for x0, x1, t, c in ((0, 4, "", "#FFF1E3"), (4, 252, "tiempo, objetivos…", AZUL_CLARO),
+                     (252, 300, "", "#C8E6C9"), (300, 1220, "resto de datos (corrientes, TCP, E/S…)", "#EEEEEE")):
+    a1.add_patch(Rectangle((x0, 0.25), x1 - x0, 0.5, fc=c, ec=GRIS, lw=1))
+    if t:
+        a1.text((x0 + x1) / 2, 0.5, t, ha="center", va="center", fontsize=8.5)
+a1.annotate("q_actual\nbyte 252", xy=(276, 0.75), xytext=(276, 1.15), ha="center", fontsize=8.5, color=VERDE,
+            arrowprops=dict(arrowstyle="->", color=VERDE), annotation_clip=False)
+a1.text(0, -0.05, "Paquete de tiempo real: 1220 B, siempre igual (sin tipos ni subpaquetes)", fontsize=8.5,
+        color=GRIS, va="top")
+a2.set_xlim(0, 100), a2.set_ylim(0, 1)
+for spine in ("left",):
+    a2.spines[spine].set_visible(False)
+a2.set_yticks([])
+a2.vlines([2 * i for i in range(51)], 0.1, 0.45, color=AZUL, lw=1)
+a2.vlines([0, 100 / 3, 200 / 3, 100], 0.55, 0.95, color=NARANJA, lw=3)
+a2.text(101, 0.27, "paquetes (500/s)", va="center", fontsize=8.5, color=AZUL)
+a2.text(101, 0.75, "dibujo (30/s): solo el último", va="center", fontsize=8.5, color=NARANJA)
+a2.set_xlabel("ms")
+fig.tight_layout(h_pad=0.6)
+fig.savefig(SALIDA / "tiempo_real.png")
+plt.close(fig)
+
+
 # ---------------------------------------------------------------------
 # 2. Arquitectura
 # ---------------------------------------------------------------------
