@@ -9,7 +9,7 @@
 | `practica1_hilos/` | Práctica 1 guiada (e1_*, e2_*, e3_*), escritos a mano desde el Anexo A |
 | `antiguos/` | Pruebas anteriores (práctica 0, lectura de dos robots, túnel) |
 | `docs/` | Documentos de diseño y guiones de defensa |
-| `memoria/` | Memoria de la entrega (`memoria.docx`), generada con `generar_memoria.py` (necesita `python-docx`) |
+| `memoria/` | Entrega escrita: `memoria.docx/.pdf` (3 páginas) y `preguntas.docx/.pdf` (apartado 12). `figuras.py` dibuja las figuras con los datos medidos de `datos/` y `generar_memoria.py` crea los documentos (necesitan `matplotlib` y `python-docx`) |
 | `venv/` | Entorno Python 3.13 con `ur3e_rg2`, `pybullet` y `numpy` |
 
 ## Entorno
