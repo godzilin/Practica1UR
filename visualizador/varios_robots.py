@@ -16,21 +16,18 @@ si un robot tarda o se desconecta, solo se bloquea su hilo y los demás siguen.
 Cómo usarlo: edita robots.json, cambia las constantes de CONFIGURACIÓN y pulsa F5 (o ▶).
 """
 
-import json
 import socket
 import struct
 import threading
 import time
-from pathlib import Path
 
 import pybullet as p
 
-from primaria import cortar_mensajes, leer_estado, grados, SIGNOS, OFFSETS, MSG_ESTADO
+from primaria import cargar_robots, cortar_mensajes, leer_estado, grados, SIGNOS, OFFSETS, MSG_ESTADO
 
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
 # =====================================================================
-FICHERO_ROBOTS = "robots.json"   # en la misma carpeta que este script
 FPS = 30                         # veces por segundo que se actualiza PyBullet
 SIN_DATOS = 1.0                  # s sin estado nuevo = robot marcado como desconectado
 TIMEOUT = 5.0                    # s sin recibir nada = robot colgado o apagado
@@ -44,20 +41,6 @@ VERDE, ROJO = [0, 0.6, 0], [0.9, 0, 0]
 ultimo_estado = {}
 lock = threading.Lock()          # nadie lee un q a medio escribir
 parar = threading.Event()        # para pedir a los hilos que terminen
-
-
-def cargar_robots():
-    """Lee robots.json y comprueba que cada robot tiene todo lo necesario."""
-    ruta = Path(__file__).with_name(FICHERO_ROBOTS)
-    robots = json.loads(ruta.read_text(encoding="utf-8"))
-    for r in robots:
-        for clave in ("nombre", "host", "puerto", "posicion"):
-            if clave not in r:
-                raise SystemExit(f"{FICHERO_ROBOTS}: al robot {r} le falta '{clave}'")
-        if len(r["posicion"]) != 6:
-            raise SystemExit(f"{FICHERO_ROBOTS}: 'posicion' de {r['nombre']} debe ser "
-                             "[x, y, z, roll, pitch, yaw]")
-    return robots
 
 
 def receptor(nombre, host, puerto):

@@ -8,19 +8,20 @@ sin tipos ni subpaquetes, cada campo siempre en el mismo byte. Los 6 ángulos
 A 500 Hz no se puede dibujar cada paquete: se reciben todos, se guarda solo el
 último y PyBullet se actualiza a un ritmo fijo (FPS).
 
-Cómo usarlo: cambia las constantes de CONFIGURACIÓN y pulsa F5 (o ▶) en VS Code.
+Cómo usarlo: pon el robot el primero de robots.json, cambia las constantes de
+CONFIGURACIÓN si hace falta y pulsa F5 (o ▶) en VS Code.
 """
 
 import socket
 import struct
 import time
 
-from primaria import grados, SIGNOS, OFFSETS    # el convenio de ángulos se ajusta en primaria.py
+from primaria import cargar_robots, grados, SIGNOS, OFFSETS    # el convenio se ajusta en primaria.py
 
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
 # =====================================================================
-HOST = "10.172.18.67"       # IP del robot: URSim en la VM, o un UR3e real (10.172.21.203 a .206)
+# La IP se toma del primer robot de robots.json (su "puerto" es el de la primaria y aquí no se usa)
 PUERTO = 30003              # interfaz de tiempo real
 
 # Qué se muestra por consola:
@@ -59,10 +60,10 @@ def cortar_paquetes(buffer):
     return completos
 
 
-def conectar_y_visualizar(robot):
+def conectar_y_visualizar(robot, host):
     """Una conexión completa con el robot. Termina con una excepción si se corta."""
-    with socket.create_connection((HOST, PUERTO), timeout=TIMEOUT) as sock:
-        print(f"Conectado a {HOST}:{PUERTO}")
+    with socket.create_connection((host, PUERTO), timeout=TIMEOUT) as sock:
+        print(f"Conectado a {host}:{PUERTO}")
         buffer = bytearray()
         q = None                                            # último q_actual recibido
         paquetes = 0                                        # contador para paquetes/s
@@ -105,6 +106,9 @@ def conectar_y_visualizar(robot):
 
 
 def main():
+    config = cargar_robots()[0]                             # el primer robot de robots.json
+    print(f"Robot: {config['nombre']} ({config['host']}:{PUERTO})")
+
     robot = None
     if USAR_PYBULLET:
         from UR3e_rg2.dynamic_ur3e import UR3eRG2
@@ -114,7 +118,7 @@ def main():
     try:
         while True:
             try:
-                conectar_y_visualizar(robot)
+                conectar_y_visualizar(robot, config["host"])
             except (OSError, ConnectionError, struct.error) as e:
                 print(f"Conexión perdida: {e}. Reintentando en {REINTENTO:.0f} s")
                 time.sleep(REINTENTO)

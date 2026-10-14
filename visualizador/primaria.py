@@ -5,19 +5,23 @@ Se conecta al robot (URSim o real), lee los mensajes binarios que envía 10 vece
 por segundo, saca los 6 ángulos de las articulaciones (q_actual) y mueve con ellos
 el UR3e de PyBullet.
 
-Cómo usarlo: cambia las constantes de CONFIGURACIÓN y pulsa F5 (o ▶) en VS Code.
+Cómo usarlo: pon el robot el primero de robots.json, cambia las constantes de
+CONFIGURACIÓN si hace falta y pulsa F5 (o ▶) en VS Code.
 """
 
+import json
 import math
 import socket
 import struct
 import time
+from pathlib import Path
 
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
 # =====================================================================
-HOST = "10.172.18.67"       # IP del robot: URSim en la VM, o un UR3e real (10.172.21.203 a .206)
-PUERTO = 30001              # interfaz primaria
+# El robot (nombre, IP y puerto) NO se escribe aquí: se usa el primero de robots.json.
+# Para cambiar de robot (otra VM, un UR3e real) se edita ese fichero, sin tocar el código.
+FICHERO_ROBOTS = "robots.json"   # en la misma carpeta que este script
 
 # Qué se muestra por consola (un hito del enunciado en cada caso):
 #   "angulos"  -> A4/A5: los 6 ángulos en grados, una vez por segundo
@@ -42,6 +46,20 @@ MSG_ROBOT = 20              # Robot Message: versión, errores, excepciones...
 SUB_MODO = 0                # subpaquete Robot mode data
 SUB_ARTICULACIONES = 1      # subpaquete Joint data
 # =====================================================================
+
+
+def cargar_robots():
+    """Lee robots.json y comprueba que cada robot tiene todo lo necesario."""
+    ruta = Path(__file__).with_name(FICHERO_ROBOTS)
+    robots = json.loads(ruta.read_text(encoding="utf-8"))
+    for r in robots:
+        for clave in ("nombre", "host", "puerto", "posicion"):
+            if clave not in r:
+                raise SystemExit(f"{FICHERO_ROBOTS}: al robot {r} le falta '{clave}'")
+        if len(r["posicion"]) != 6:
+            raise SystemExit(f"{FICHERO_ROBOTS}: 'posicion' de {r['nombre']} debe ser "
+                             "[x, y, z, roll, pitch, yaw]")
+    return robots
 
 
 def cortar_mensajes(buffer):
@@ -119,10 +137,10 @@ def grados(q):
     return "[" + ", ".join(f"{math.degrees(v):7.2f}" for v in q) + "]"
 
 
-def conectar_y_visualizar(robot):
+def conectar_y_visualizar(robot, host, puerto):
     """Una conexión completa con el robot. Termina con una excepción si se corta."""
-    with socket.create_connection((HOST, PUERTO), timeout=TIMEOUT) as sock:
-        print(f"Conectado a {HOST}:{PUERTO}")
+    with socket.create_connection((host, puerto), timeout=TIMEOUT) as sock:
+        print(f"Conectado a {host}:{puerto}")
         buffer = bytearray()
         ultimo_print = 0.0
 
@@ -167,6 +185,9 @@ def imprimir_estructura(tipo, mensaje):
 
 
 def main():
+    config = cargar_robots()[0]                             # el primer robot de robots.json
+    print(f"Robot: {config['nombre']} ({config['host']}:{config['puerto']})")
+
     robot = None
     if USAR_PYBULLET:
         from UR3e_rg2.dynamic_ur3e import UR3eRG2
@@ -176,7 +197,7 @@ def main():
     try:
         while True:
             try:
-                conectar_y_visualizar(robot)
+                conectar_y_visualizar(robot, config["host"], config["puerto"])
             except (OSError, ConnectionError, ValueError, struct.error) as e:
                 print(f"Conexión perdida: {e}. Reintentando en {REINTENTO:.0f} s")
                 time.sleep(REINTENTO)

@@ -4,6 +4,8 @@ Test de conexión con el robot por la interfaz primaria (30001).
 Lee la versión, el modo y los ángulos del robot. Si MOVER = True, además gira la base
 GIRO_BASE grados con un movej, comprueba que ha llegado y la devuelve a su sitio.
 
+El robot es el primero de robots.json.
+
 Cómo usarlo: cambia las constantes de CONFIGURACIÓN y pulsa F5 (o ▶) en VS Code.
 """
 
@@ -11,19 +13,18 @@ import math
 import socket
 import time
 
-from primaria import cortar_mensajes, leer_estado, mostrar_mensaje_robot, grados
+from primaria import cargar_robots, cortar_mensajes, leer_estado, mostrar_mensaje_robot, grados
 
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
 # =====================================================================
-HOST = "10.172.18.67"       # IP del robot
 MOVER = False               # True: gira la base y vuelve (¡robot real solo con el profesor!)
 GIRO_BASE = 10.0            # grados que gira la base (se limita a ±30)
 PREPARAR = False            # True: antes enciende el robot y suelta frenos (dashboard)
 
 V, A = 0.3, 0.5             # rad/s y rad/s²: límites obligatorios en el robot real
 TOLERANCIA = 0.01           # rad: error máximo para dar el movimiento por bueno
-PUERTO = 30001              # interfaz primaria (acepta órdenes URScript)
+PUERTO = 30001              # interfaz primaria (acepta órdenes URScript; la 30011 no)
 PUERTO_DASH = 29999         # dashboard server
 # =====================================================================
 
@@ -53,9 +54,9 @@ def siguiente_estado(lector):
                 return estado
 
 
-def preparar():
+def preparar(host):
     """Enciende el robot y suelta los frenos con comandos de texto al dashboard."""
-    with socket.create_connection((HOST, PUERTO_DASH), timeout=5) as d:
+    with socket.create_connection((host, PUERTO_DASH), timeout=5) as d:
         print("[DASH]", d.recv(1024).decode().strip())      # mensaje de bienvenida
         for orden in ("power on", "brake release"):
             d.sendall((orden + "\n").encode())
@@ -100,11 +101,15 @@ def mover(sock, lector, objetivo, timeout=15):
 
 
 def main():
-    if PREPARAR:
-        preparar()
+    config = cargar_robots()[0]                             # el primer robot de robots.json
+    host = config["host"]
+    print(f"Robot: {config['nombre']}")
 
-    with socket.create_connection((HOST, PUERTO), timeout=5) as sock:
-        print(f"Conectado a {HOST}:{PUERTO}")
+    if PREPARAR:
+        preparar(host)
+
+    with socket.create_connection((host, PUERTO), timeout=5) as sock:
+        print(f"Conectado a {host}:{PUERTO}")
         lector = mensajes(sock)
 
         # Contar cuántos estados llegan en 1 s (debe salir unos 10)

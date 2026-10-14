@@ -33,6 +33,11 @@ uv pip install --python venv/bin/python material/ur3e_rg2-0.1.0-py3-none-any.whl
 Abrir la carpeta `Practica1UR` en VS Code (usa `venv` automáticamente por `.vscode/settings.json`),
 abrir el script, cambiar las constantes de `CONFIGURACIÓN` del principio y pulsar F5 o ▶.
 
+Los robots (nombre, IP, puerto, posición en la escena) se configuran en `visualizador/robots.json`,
+sin tocar el código. `primaria.py`, `tiempo_real.py` y `test_conexion.py` usan el **primer** robot
+de la lista; para cambiar de robot (otra VM o un UR3e real) se pone el primero. `varios_robots.py`
+usa todos.
+
 - `visualizador/test_conexion.py`: lee versión, modo y q_actual; con `MOVER = True` gira la base y vuelve
 - `visualizador/primaria.py`: visualizador; `MODO` = `"angulos"` (A4/A5), `"bytes"` (A1) o `"mensajes"` (A2/A3)
 - `visualizador/tiempo_real.py`: visualizador a 500 Hz; `MODO` = `"angulos"` (B2–B4) o `"paquetes"` (B1); `FPS` de dibujo
