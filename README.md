@@ -127,3 +127,14 @@ presente con la seta de emergencia al alcance.
 - [x] D · `ensenar_reproducir.py`: enseñar, previsualizar con fantasma, ejecutar con confirmación, supervisión de errores, guardar/cargar. Diseño, pruebas y guion de defensa en [`docs/ensenar_reproducir.md`](docs/ensenar_reproducir.md)
   - [x] Probar a mano las teclas en la ventana de PyBullet
   - [ ] Validación en un UR3e real con el profesor
+- [x] Pruebas de robustez (14/10/2026)
+  - `prueba_robustez.py`: 20 000 mensajes rotos y 11 `robots.json` erróneos → `TODO OK`
+  - Robot falso (servidor TCP local) con 7 ataques: basura, truncado y cierre, NaN, silencio,
+    longitud enorme, envío byte a byte, error corto → `primaria.py`, `tiempo_real.py` y los
+    receptores de C y D reconectan y siguen recibiendo
+  - Contra URSim, con la secuencia en marcha: apagar el robot (dashboard `power off`), dashboard
+    caído al desbloquear, corte de red con iptables, cierre de la ventana → DETENIDO con el motivo
+    o `stopj`; al recuperarse, Enter reanuda y la secuencia termina
+  - Arrancar sin robot (IP inexistente) y cargar 8 secuencias corruptas → avisos, sin traceback
+  - `test_conexion.py` con IP inexistente / puerto cerrado → mensaje de error claro
+  - Sin probar: parada de emergencia (URSim no la provoca por red)
