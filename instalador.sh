@@ -107,4 +107,4 @@ if [ "${PRACTICA1UR_NO_INICIAR:-0}" = "1" ]; then
 fi
 
 printf '\nIniciando el visualizador...\n'
-exec "$PYTHON" visualizador/ensenar_reproducir.py
+exec "$DESTINO/lanzador.sh"
