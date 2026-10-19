@@ -21,8 +21,7 @@ GitHub ejecutando. Si Python 3 no está instalado, el instalador lo descarga
 automáticamente mediante `uv`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/godzilin/Practica1UR/main/instalador.sh -o instalador.sh
-bash instalador.sh
+bash -c "\$(curl -fsSL https://raw.githubusercontent.com/godzilin/Practica1UR/main/instalador.sh)"
 ```
 
 El instalador clona el repositorio en `~/Practica1UR`, crea `.venv` e instala
