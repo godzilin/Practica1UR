@@ -10,7 +10,7 @@
 | `antiguos/` | Pruebas anteriores (práctica 0, lectura de dos robots, túnel) |
 | `docs/` | Documentos de diseño y guiones de defensa |
 | `memoria/` | Entrega escrita: `memoria.docx/.pdf` (3 páginas) y `preguntas.docx/.pdf` (apartado 12). `figuras.py` dibuja las figuras con los datos medidos de `datos/` y `generar_memoria.py` crea los documentos (necesitan `matplotlib` y `python-docx`) |
-| `.venv/` | Entorno virtual local de Windows, no se publica en Git |
+| `python/` | Python portable y dependencias locales de Windows, no se publica en Git |
 
 ## Entorno
 
@@ -30,9 +30,9 @@ python -m pip install --no-deps material/ur3e_rg2-0.1.0-py3-none-any.whl
 ### Windows
 
 En cada ordenador Windows, prepara el entorno una sola vez haciendo doble clic en
-`preparar_windows.bat`. Este paso crea `.venv` e instala desde Internet las
-dependencias y la wheel incluida en `material/`. Necesita Python 3.11, porque
-es la versión compatible con PyBullet en este proyecto.
+`preparar_windows.bat`. El script descarga Python portable 3.11 dentro de la
+carpeta `python/` e instala las dependencias y la wheel incluida en `material/`.
+No hace falta instalar Python fuera del proyecto.
 
 Una vez preparado, haz doble clic en `lanzador_windows.bat` o ejecútalo desde CMD:
 
@@ -45,10 +45,9 @@ programa en una ventana CMD independiente. El lanzador no crea entornos ni usa
 `pip`: comprueba offline que `.venv` contiene `pybullet`, `UR3e_rg2`, `numpy`,
 `matplotlib` y `python-docx`; si falta algo, muestra el paquete y termina.
 
-El entorno virtual no se puede copiar de forma fiable entre ordenadores porque
-contiene rutas y binarios específicos de Windows y de la versión de Python.
-Por eso cada equipo debe ejecutar `preparar_windows.bat` una vez; después el
-lanzador funciona sin conexión y solo comprueba las librerías.
+La carpeta `python/` se genera localmente y queda excluida de Git porque contiene
+binarios y librerías de Windows. Cada equipo ejecuta `preparar_windows.bat` una
+vez; después el lanzador funciona sin conexión y solo comprueba las librerías.
 
 ## Red
 

@@ -2,7 +2,7 @@
 setlocal EnableExtensions
 
 set "BASE=%~dp0"
-set "PYTHON=%BASE%.venv\Scripts\python.exe"
+set "PYTHON=%BASE%python\python.exe"
 
 call :comprobar_entorno
 if errorlevel 1 exit /b 1
@@ -46,8 +46,8 @@ exit /b 0
 
 :comprobar_entorno
 if not exist "%PYTHON%" (
-    echo No se encuentra el entorno virtual en:
-    echo   %BASE%.venv
+    echo No se encuentra Python portable en:
+    echo   %BASE%python
     echo Ejecuta preparar_windows.bat una vez en este ordenador.
     pause
     exit /b 1

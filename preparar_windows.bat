@@ -2,44 +2,33 @@
 setlocal EnableExtensions
 
 set "BASE=%~dp0"
-set "PYTHON=%BASE%.venv\Scripts\python.exe"
+set "PYTHON_DIR=%BASE%python"
+set "PYTHON=%PYTHON_DIR%\python.exe"
+set "PYTHON_ZIP=%BASE%python-3.11.9-embed-amd64.zip"
+set "PYTHON_URL=https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
+set "GET_PIP=%BASE%get-pip.py"
 
-if exist "%BASE%.venv\pyvenv.cfg" (
-    findstr /r /c:"version = 3\.1[0-9]" "%BASE%.venv\pyvenv.cfg" >nul
-    if errorlevel 1 (
-        echo Eliminando el entorno antiguo de Python 3.7...
-        rmdir /s /q "%BASE%.venv"
-    )
+if not exist "%PYTHON%" (
+    echo Descargando Python portable 3.11.9. Este paso necesita Internet.
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri '%PYTHON_URL%' -OutFile '%PYTHON_ZIP%'"
+    if errorlevel 1 goto error
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -Path '%PYTHON_ZIP%' -DestinationPath '%PYTHON_DIR%' -Force"
+    if errorlevel 1 goto error
+    del /q "%PYTHON_ZIP%"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = '%PYTHON_DIR%\python311._pth'; (Get-Content $p) -replace '#import site', 'import site' | Set-Content $p"
+    if errorlevel 1 goto error
 )
 
-set "CREADOR="
-where python3.11 >nul 2>&1
-if not errorlevel 1 set "CREADOR=python3.11"
-
-if not defined CREADOR (
-    where py >nul 2>&1
-    if not errorlevel 1 (
-        py -3.11 -c "import sys" >nul 2>&1
-        if not errorlevel 1 set "CREADOR=py -3.11"
-    )
+if not exist "%PYTHON_DIR%\Scripts\pip.exe" (
+    echo Preparando pip dentro de Python portable...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile '%GET_PIP%'"
+    if errorlevel 1 goto error
+    "%PYTHON%" "%GET_PIP%"
+    if errorlevel 1 goto error
+    del /q "%GET_PIP%"
 )
 
-if not defined CREADOR (
-    echo No se encuentra Python 3.10 o posterior.
-    echo El unico Python disponible es demasiado antiguo para pybullet.
-    echo Instala Python 3.11 desde https://www.python.org/downloads/windows/
-    pause
-    exit /b 1
-)
-
-%CREADOR% -m venv "%BASE%.venv"
-if errorlevel 1 (
-    echo No se pudo crear el entorno virtual.
-    pause
-    exit /b 1
-)
-
-echo Instalando dependencias en .venv. Este archivo puede necesitar Internet.
+echo Instalando dependencias en Python portable. Este paso necesita Internet.
 "%PYTHON%" -m pip install --upgrade pip
 if errorlevel 1 goto error
 "%PYTHON%" -m pip install pybullet pybullet-planning numpy matplotlib python-docx
