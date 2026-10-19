@@ -14,6 +14,28 @@
 
 ## Entorno
 
+### Instalación automática
+
+En Linux o macOS, con `git` y `curl` o `wget`, se puede instalar todo desde
+GitHub ejecutando. Si Python 3 no está instalado, el instalador lo descarga
+automáticamente mediante `uv`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/godzilin/Practica1UR/main/instalador.sh -o instalador.sh
+bash instalador.sh
+```
+
+El instalador clona el repositorio en `~/Practica1UR`, crea `.venv` e instala
+PyBullet, NumPy, Matplotlib, `python-docx` y la wheel `ur3e_rg2`. Para usar otra
+carpeta, por ejemplo una ruta compartida, se puede ejecutar:
+
+```bash
+PRACTICA1UR_DIR="$HOME/mi-practica" bash instalador.sh
+```
+
+Después se puede ejecutar directamente un programa con
+`~/Practica1UR/.venv/bin/python visualizador/test_conexion.py`.
+
 ```
 source venv/bin/activate.fish      # fish; en bash: source venv/bin/activate
 ```
