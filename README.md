@@ -60,9 +60,9 @@ lanzador_windows.bat
 ```
 
 El menú de Windows ofrece las mismas opciones que `lanzador.sh` y abre cada
-programa en una ventana CMD independiente. Necesita que exista `.venv` con las
-dependencias instaladas; el instalador `.sh` se ejecuta desde WSL, no desde
-PowerShell o CMD.
+programa en una ventana CMD independiente. El BAT no descarga Python ni el
+repositorio: necesita que Python 3 ya esté instalado y crea `.venv` localmente.
+La primera vez usa `pip` para instalar las librerías del proyecto.
 
 El instalador clona el repositorio en `~/Practica1UR`, crea `.venv` e instala
 PyBullet, NumPy, Matplotlib, `python-docx` y la wheel `ur3e_rg2`. Para usar otra
