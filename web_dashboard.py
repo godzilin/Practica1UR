@@ -20,6 +20,7 @@ PORT = 8765
 PROGRAMAS = {
     "primaria": {"titulo": "Interfaz primaria", "descripcion": "Visualizador del puerto 30001", "script": "primaria.py"},
     "varios": {"titulo": "Varios robots", "descripcion": "Varios robots en una escena", "script": "varios_robots.py"},
+    "ensenar-varios": {"titulo": "Ensenar y reproducir varios", "descripcion": "Secuencias coordinadas para varios robots", "script": "ensenar_reproducir_varios.py"},
     "tiempo-real": {"titulo": "Tiempo real", "descripcion": "Visualizador del puerto 30003", "script": "tiempo_real.py"},
     "ensenar": {"titulo": "Ensenar y reproducir", "descripcion": "Secuencias con supervision", "script": "ensenar_reproducir.py"},
     "conexion": {"titulo": "Probar conexion", "descripcion": "Comprueba estado y comunicacion", "script": "test_conexion.py"},

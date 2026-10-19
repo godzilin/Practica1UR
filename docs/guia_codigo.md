@@ -17,6 +17,10 @@ separación clara entre protocolo, conexión, simulación y lógica de aplicaci�
    usa un `Lock` para compartir el último estado.
 6. `visualizador/ensenar_reproducir.py`: añade la aplicación completa, con
    teclado, secuencias, fantasma, errores y máquina de estados.
+7. `visualizador/ensenar_reproducir_varios.py`: reutiliza esa máquina de estados
+   por robot y permite ejecutar las secuencias de todos los robots a la vez con `A`.
+   Las teclas `1..9` cambian el robot activo sin detener los demás; los
+   deslizadores se aplican al fantasma del robot seleccionado.
 
 Los ficheros de `antiguos/` son ejemplos previos de aprendizaje. `memoria/`
 contiene scripts de generación de documentos y figuras, no código necesario
@@ -76,6 +80,25 @@ python -m py_compile comprobar_dependencias.py visualizador/*.py antiguos/*.py m
 
 La prueba de robustez no necesita robot. Los demás scripts necesitan las
 dependencias instaladas y, para leer datos, un URSim o un UR3e accesible.
+
+## Enseñar y reproducir con varios robots
+
+El visualizador `ensenar_reproducir_varios.py` mantiene una conexión, una
+secuencia y una máquina de estados por robot configurado en `robots.json`.
+La ventana de PyBullet muestra solo el estado detallado del robot activo para
+evitar que las etiquetas se solapen.
+
+| Control | Acción |
+|---|---|
+| `1..9` | Cambiar el robot activo; no detiene los demás |
+| `Espacio`, `D`, `P`, `Enter`, `Esc`, `G/C`, `E`, `S` | Aplicar las acciones de enseñar/reproducir al robot activo |
+| `A` | Iniciar las secuencias cargadas de todos los robots en paralelo |
+| `L` | Activar o desactivar el bucle automático del robot activo |
+
+Los deslizadores de PyBullet modifican únicamente el fantasma del robot
+activo. El robot simulado opaco solo sigue el estado recibido desde su robot
+real o URSim. Cada secuencia se guarda con el nombre del robot, por ejemplo
+`secuencias/secuencia_Robot_2.json`.
 
 ## Generación de la memoria
 

@@ -6,6 +6,7 @@ aplicacion independiente por robot, pero comparte una sola ventana de PyBullet.
 
 Teclas:
     1..9  seleccionar robot
+    A     ejecutar la secuencia de todos los robots
     L     activar/desactivar bucle automatico
     Las demas teclas son las de ensenar_reproducir.py para el robot seleccionado.
 
@@ -37,12 +38,14 @@ SEPARACION = 1.0
 class EscenaRobot:
     """Vista de la escena limitada a un robot real y su panel de deslizadores."""
 
-    def __init__(self, escena, robot_id):
+    def __init__(self, escena, robot_id, fantasma_id):
         self.escena = escena
         self.robot_id = robot_id
+        self.fantasma_id = fantasma_id
 
-    def move_robot(self, _, q):
-        self.escena.move_robot(self.robot_id, q)
+    def move_robot(self, robot_id, q):
+        destino = self.fantasma_id if robot_id == self.fantasma_id else self.robot_id
+        self.escena.move_robot(destino, q)
 
     def get_param_values(self):
         return self.escena.get_param_values()
@@ -98,9 +101,11 @@ class AplicacionMultiple:
         self.robots = robots
         self.aplicaciones = []
         for robot in robots:
+            robot["estado"] = None
+            robot["conectado"] = False
             robot["conexion"] = Robot(robot)
-            escena_robot = EscenaRobot(escena, robot["id"])
             fantasma = escena.spawn_robot(robot["posicion"])
+            escena_robot = EscenaRobot(escena, robot["id"], fantasma)
             for enlace in range(-1, p.getNumJoints(fantasma)):
                 p.changeVisualShape(fantasma, enlace,
                                     rgbaColor=[0.2, 0.6, 1.0, 0.35])
@@ -133,10 +138,10 @@ class AplicacionMultiple:
     def seleccionar(self, indice):
         if indice < 0 or indice >= len(self.robots):
             return
+        if indice == self.seleccion:
+            return
         anterior = self.actual
-        if anterior.modo in ("ENVIANDO", "MOVIENDO", "REANUDANDO"):
-            anterior.robot.enviar("stopj(2)")
-            anterior.cambiar_modo("REPOSO", "Movimiento cancelado al cambiar de robot")
+        anterior.limpiar_textos()
         self.seleccion = indice
         app = self.actual
         app.ver_deslizadores = False
@@ -154,18 +159,13 @@ class AplicacionMultiple:
     def _actualizar_menu(self):
         nombres = []
         for indice, robot in enumerate(self.robots):
-            marca = "*" if indice == self.seleccion else " "
-            nombres.append(f"{indice + 1}:{marca}{robot['nombre']}")
-        texto = " | ".join(nombres) + f"   L: bucle {'ON' if self.automatico else 'OFF'}"
-        posicion = [-0.9, -0.7, 1.65]
-        if self.menu_id is None:
-            self.menu_id = p.addUserDebugText(solo_ascii(texto), posicion,
-                                              [0.1, 0.1, 0.1], textSize=1.4)
-        elif texto != self.menu_contenido:
-            self.menu_id = p.addUserDebugText(solo_ascii(texto), posicion,
-                                              [0.1, 0.1, 0.1], textSize=1.4,
-                                              replaceItemUniqueId=self.menu_id)
-        self.menu_contenido = texto
+            marca = ">" if indice == self.seleccion else " "
+            nombres.append(f"[{indice + 1}] {marca}{robot['nombre']}")
+        texto = "  ".join(nombres)
+        control = (f"CAMBIAR ROBOT: pulsa [1]-[{len(self.robots)}]   "
+                   f"ACTIVO: {self.robot_actual['nombre']}   "
+                   f"A: ejecutar todos   L: bucle {'ON' if self.automatico else 'OFF'}")
+        self.actual.ayuda_extra = [solo_ascii(control), solo_ascii(texto)]
 
     def tecla(self, tecla, estado):
         if ord("1") <= tecla <= ord("9"):
@@ -176,7 +176,23 @@ class AplicacionMultiple:
         if tecla == ord("l"):
             self.alternar_automatico()
             return
+        if tecla == ord("a"):
+            self.ejecutar_todos()
+            return
         self.actual.tecla(tecla, estado)
+
+    def ejecutar_todos(self):
+        """Inicia la secuencia de cada robot que tenga puntos validos."""
+        iniciados = 0
+        for robot, app in zip(self.robots, self.aplicaciones):
+            estado = robot.get("estado")
+            if not app.puntos:
+                continue
+            modo_anterior = app.modo
+            app.ejecutar(estado)
+            if modo_anterior == "REPOSO" and app.modo == "ENVIANDO":
+                iniciados += 1
+        self.actual.avisar(f"Ejecutadas {iniciados}/{len(self.robots)} secuencias (A)")
 
     def _estado_de(self, robot):
         return robot["conexion"].leer()
@@ -189,13 +205,10 @@ class AplicacionMultiple:
             robot["conectado"] = conectado
             if conectado:
                 self.escena.move_robot(robot["id"], a_pybullet(estado["q"]))
-                color = [0, 0.6, 0]
-            else:
-                color = [0.9, 0, 0]
-            texto = robot["nombre"] if conectado else f"{robot['nombre']} (SIN DATOS)"
+            color = [0.05, 0.25, 0.55] if robot is self.robot_actual else [0.3, 0.3, 0.3]
             posicion = robot["posicion"]
             self.etiquetas[robot["nombre"]] = p.addUserDebugText(
-                texto, [posicion[0], posicion[1], posicion[2] + ALTURA_ETIQUETA],
+                robot["nombre"], [posicion[0], posicion[1], posicion[2] + ALTURA_ETIQUETA],
                 color, textSize=1.3,
                 replaceItemUniqueId=self.etiquetas[robot["nombre"]])
         self._actualizar_menu()
@@ -214,12 +227,15 @@ class AplicacionMultiple:
 
     def fotograma(self):
         self.actualizar_modelos()
-        estado = self.robot_actual["estado"]
-        self.actual.iniciar_deslizadores(estado)
-        modo_anterior = self.actual.modo
-        self.actual.paso_maquina(estado)
-        self.avanzar_bucle(modo_anterior)
-        self.actual.dibujar(estado)
+        estado_actual = self.robot_actual["estado"]
+        for robot, app in zip(self.robots, self.aplicaciones):
+            estado = robot["estado"]
+            app.iniciar_deslizadores(estado)
+            modo_anterior = app.modo
+            app.paso_maquina(estado)
+            if app is self.actual:
+                self.avanzar_bucle(modo_anterior)
+        self.actual.dibujar(estado_actual)
 
 
 def main():
@@ -251,7 +267,7 @@ def main():
     try:
         siguiente = time.monotonic()
         while True:
-            estado = gestor.robot_actual["estado"]
+            estado = gestor.robot_actual.get("estado")
             for tecla in (t + 32 if 65 <= t <= 90 else t
                           for t, est in p.getKeyboardEvents().items()
                           if est & p.KEY_WAS_TRIGGERED):

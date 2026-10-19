@@ -3,6 +3,10 @@
 Documento de diseño: qué pide el enunciado, cómo lo resolvemos y cómo se demuestra en la defensa.
 Script: `visualizador/ensenar_reproducir.py`.
 
+La variante multi-robot se encuentra en `visualizador/ensenar_reproducir_varios.py`.
+Mantiene una instancia independiente de esta aplicación para cada robot y
+comparte únicamente la escena de PyBullet.
+
 > Antes de ejecutar con un robot real, leer la sección de seguridad y validar la
 > secuencia en URSim. Para conocer el resto del proyecto y el orden recomendado
 > de lectura, consultar [`docs/guia_codigo.md`](guia_codigo.md).
@@ -148,6 +152,15 @@ Nunca se bloquea esperando al robot: cada vuelta del bucle mira el estado y deci
 
 En la ventana se muestra el estado (`REPOSO`, `MOVIENDO 2/4`, `DETENIDO: <motivo>`...), el número de
 puntos y esta ayuda. La consola guarda el registro detallado.
+
+### Variante multi-robot
+
+En la versión multi-robot, `1..9` cambia el robot activo y `A` inicia todas las
+secuencias que tengan puntos cargados. Cambiar de robot no envía `stopj` al
+robot anterior: cada máquina de estados continúa de forma independiente.
+Los deslizadores se muestran para el fantasma del robot activo, mientras que
+los robots opacos siguen sus estados reales. La ventana muestra el estado
+detallado solo del robot activo para evitar etiquetas duplicadas o solapadas.
 
 ### Fichero de secuencia
 

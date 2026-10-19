@@ -228,6 +228,7 @@ class Aplicacion:
         self.t_camara = 0.0
         self.camara_textos = None       # cámara con la que se colocaron los textos
         self.situacion = "nunca"        # None: sin datos · True/False: robot en RUNNING o no
+        self.ayuda_extra = []            # controles añadidos por una variante de la aplicación
 
     # ----- utilidades -----
     def cambiar_modo(self, modo, aviso=None):
@@ -238,6 +239,13 @@ class Aplicacion:
     def avisar(self, texto):
         self.aviso = texto
         print(f"[{self.modo}] {texto}")
+
+    def limpiar_textos(self):
+        """Elimina el bloque de textos antes de dejar de dibujar esta aplicacion."""
+        for texto_id, _ in self.textos.values():
+            p.removeUserDebugItem(texto_id)
+        self.textos.clear()
+        self.camara_textos = None
 
     def detener(self, motivo):
         self.cambiar_modo("DETENIDO", motivo)          # la ayuda ya dice Enter/Esc
@@ -510,7 +518,8 @@ class Aplicacion:
 
         # Textos de la ventana
         if estado is None:
-            linea_estado = "ESPERANDO DATOS" if self.robot.conectado() else "SIN CONEXIÓN"
+            conexion = "ESPERANDO DATOS" if self.robot.conectado() else "SIN CONEXIÓN"
+            linea_estado = f"{self.modo} - {conexion}"
         elif self.modo in ("ENVIANDO", "MOVIENDO"):
             linea_estado = f"{self.modo} {self.paso + 1}/{len(self.puntos)}"
         else:
@@ -527,12 +536,12 @@ class Aplicacion:
         else:
             color = [0, 0, 0]
         aviso = textwrap.wrap(self.aviso, ANCHO_LINEA)[:LINEAS_AVISO]
-        ayuda = AYUDA.get(self.modo, [])
+        ayuda = self.ayuda_extra + AYUDA.get(self.modo, [])
         gris = [0.25, 0.25, 0.25]
         # (texto, color, tamaño): una entrada por línea, de arriba abajo
         lineas = ([(linea_estado, color, 2.2)] + [(a, color, 1.5) for a in aviso] +
                   [(puntos, [0, 0, 0], 1.5)] + [(a, gris, 1.4) for a in ayuda])
-        lineas += [("", gris, 1.4)] * (1 + LINEAS_AVISO + 1 + 3 - len(lineas))   # vaciar las sobrantes
+        lineas += [("", gris, 1.4)] * max(0, 1 + LINEAS_AVISO + 1 + len(ayuda) - len(lineas))
         recolocar = self.mirar_camara()
         y_px = MARGEN_PX
         for i, (texto, col, tam) in enumerate(lineas):

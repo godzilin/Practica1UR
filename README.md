@@ -83,6 +83,7 @@ usa todos, los conecta por el puerto 30001 y los separa automáticamente en la e
 - `visualizador/primaria.py`: visualizador; `MODO` = `"angulos"` (A4/A5), `"bytes"` (A1) o `"mensajes"` (A2/A3)
 - `visualizador/tiempo_real.py`: visualizador a 500 Hz; `MODO` = `"angulos"` (B2–B4) o `"paquetes"` (B1); `FPS` de dibujo
 - `visualizador/ensenar_reproducir.py`: mini-aplicación Enseñar y reproducir; teclas con la ventana de PyBullet activa (Espacio, ← →, B, D, P, Enter, Esc, G/C, E, S)
+- `visualizador/ensenar_reproducir_varios.py`: versión multi-robot; selecciona con `1..9`, enseña/reproduce el seleccionado y pulsa `A` para ejecutar todas las secuencias coordinadamente. Cambiar de selección no detiene los demás robots; los deslizadores actúan sobre el fantasma del robot activo
 - `visualizador/prueba_robustez.py`: prueba sin robot; mete 20 000 mensajes rotos en el parser y `robots.json` erróneos (debe acabar en `TODO OK`)
 - `visualizador/varios_robots.py`: varios robots en la misma ventana; los robots se configuran en `visualizador/robots.json` (nombre y host), y el script asigna el puerto 30001 y las posiciones
 
@@ -100,6 +101,10 @@ La práctica está organizada de menor a mayor complejidad:
   principal el acceso a PyBullet.
 5. `ensenar_reproducir.py` reutiliza el parser y añade una máquina de estados,
   teclado, secuencias, previsualización y envío seguro de órdenes.
+6. `ensenar_reproducir_varios.py` crea una aplicación independiente por robot:
+  `1..9` cambia la selección de la UI, `A` inicia todas las secuencias y cada
+  fantasma tiene su propio estado de deslizadores. Cambiar de robot solo cambia
+  la interfaz visible; no envía `stopj` al robot anterior.
 
 Los comentarios de los scripts explican cada bloque con este mismo recorrido.
 La guía ampliada de lectura, protocolo y pruebas está en
