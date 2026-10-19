@@ -13,6 +13,9 @@ import struct
 import threading
 import time
 
+# Ejemplo histórico: cada hilo conserva la lectura de su robot y el principal
+# solo imprime copias. El visualizador actual reutiliza esta idea con validación
+# de longitudes, reconexión y una ventana de PyBullet.
 # ---------------------------------------------------------------
 # 1. CONFIGURACIÓN
 # ---------------------------------------------------------------
@@ -48,6 +51,7 @@ stop_event = threading.Event()
 # ---------------------------------------------------------------
 def recv_exact(sock, n):
     """Lee exactamente n bytes (TCP puede entregarlos por trozos)."""
+    # No se interpreta ninguna cabecera hasta reunir todos sus bytes.
     data = bytearray()
     while len(data) < n:
         chunk = sock.recv(n - len(data))
@@ -59,6 +63,8 @@ def recv_exact(sock, n):
 
 def read_message(sock):
     """Lee un mensaje completo: devuelve (tipo, contenido)."""
+    # La longitud incluye los cinco bytes de cabecera, por eso el payload
+    # restante se calcula como length - 5.
     # Cabecera: 4 bytes de longitud total + 1 byte de tipo
     length, = struct.unpack("!I", recv_exact(sock, 4))
     msg_type, = struct.unpack("!B", recv_exact(sock, 1))
@@ -69,6 +75,8 @@ def read_message(sock):
 
 def parse_robot_state(payload):
     """Recorre los subpaquetes y extrae articulaciones y pose del TCP."""
+    # Cada subpaquete declara su tamaño; así se pueden saltar los que aún no
+    # interesan sin romper la lectura de los siguientes.
     joints, tcp = None, None
     offset = 0
     while offset < len(payload):
@@ -98,6 +106,7 @@ def parse_robot_state(payload):
 def robot_worker(name, host, port):
     """Se conecta a un robot y actualiza latest[name] sin parar.
     Si se pierde la conexión, reintenta cada 2 s."""
+    # El hilo bloquea en recv, pero no bloquea a los otros robots.
     while not stop_event.is_set():
         try:
             print(f"[{name}] Conectando a {host}:{port} ...")
@@ -131,6 +140,7 @@ def robot_worker(name, host, port):
 # 5. PROGRAMA PRINCIPAL
 # ---------------------------------------------------------------
 def main():
+    # Se lanza un trabajador independiente por entrada de ROBOTS.
     # Crear y lanzar un hilo por robot
     threads = []
     for name, (host, port) in ROBOTS.items():

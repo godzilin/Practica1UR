@@ -7,14 +7,17 @@ from pathlib import Path
 
 
 FICHERO = Path(__file__).with_name("robots.json")
+# La ruta junto al script funciona igual desde VS Code, el lanzador o CMD.
 
 
 def pedir(texto, actual=""):
+    # Una entrada vacía conserva el valor anterior.
     respuesta = input(f"{texto} [{actual}]: ").strip()
     return respuesta or str(actual)
 
 
 def pedir_entero(texto, actual):
+    # El puerto se valida aquí para que robots.json no reciba texto inválido.
     while True:
         try:
             valor = int(pedir(texto, actual))
@@ -26,6 +29,7 @@ def pedir_entero(texto, actual):
 
 
 def pedir_posicion(actual):
+    # La posición combina x, y, z y la orientación roll, pitch, yaw.
     while True:
         texto = pedir("Posicion x y z roll pitch yaw", " ".join(map(str, actual)))
         try:
@@ -38,6 +42,7 @@ def pedir_posicion(actual):
 
 
 def cargar():
+    # Un fichero ausente o corrupto permite empezar desde una lista vacía.
     try:
         datos = json.loads(FICHERO.read_text(encoding="utf-8"))
         if not isinstance(datos, list):
@@ -49,6 +54,7 @@ def cargar():
 
 
 def guardar(robots):
+    # La copia y el temporal evitan perder el JSON anterior si falla una escritura.
     copia = FICHERO.with_suffix(".json.bak")
     if FICHERO.exists():
         copia.write_bytes(FICHERO.read_bytes())
@@ -65,6 +71,7 @@ def guardar(robots):
 
 
 def main():
+    # Se reutilizan los valores actuales y solo se solicitan los nuevos campos.
     actuales = cargar()
     print(f"\nConfiguracion de robots: {FICHERO}")
     try:
@@ -92,4 +99,5 @@ def main():
 
 
 if __name__ == "__main__":
+    # El lanzador puede reaccionar al código de salida del asistente.
     raise SystemExit(main())

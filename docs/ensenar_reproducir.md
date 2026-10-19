@@ -3,6 +3,24 @@
 Documento de diseño: qué pide el enunciado, cómo lo resolvemos y cómo se demuestra en la defensa.
 Script: `visualizador/ensenar_reproducir.py`.
 
+> Antes de ejecutar con un robot real, leer la sección de seguridad y validar la
+> secuencia en URSim. Para conocer el resto del proyecto y el orden recomendado
+> de lectura, consultar [`docs/guia_codigo.md`](guia_codigo.md).
+
+## Lectura rápida del script
+
+El fichero está dividido en cuatro capas. Las constantes del principio fijan
+los límites de seguridad y los tiempos. Las funciones pequeñas convierten entre
+radianes y PyBullet o validan puntos. `Robot` encapsula la conexión: un hilo
+recibe estados y errores, mientras el programa principal envía órdenes por el
+mismo socket. `Aplicacion` contiene la máquina de estados y separa las teclas,
+la lógica de ejecución y el dibujo.
+
+La regla importante es que el hilo receptor no toca PyBullet. Solo publica una
+copia protegida por `Lock`; el bucle principal consume esa copia a 30 FPS.
+Esto evita llamadas concurrentes a la biblioteca gráfica y permite detectar una
+caída de red sin congelar la ventana.
+
 ## 1. Qué pide el enunciado
 
 Apartados 10 (Bloque D) y 11 de *Práctica guiada: visualizador de un UR3e por TCP/IP*.

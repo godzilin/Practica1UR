@@ -20,6 +20,8 @@ from docx.shared import Cm, Pt, RGBColor
 
 CARPETA = Path(__file__).parent
 FIGURAS = CARPETA / "figuras"
+# La salida se mantiene junto al script para que la memoria pueda regenerarse
+# sin depender de la carpeta desde la que se lance Python.
 AUTOR = "Daniel López Farray"
 ASIGNATURA = "Redes de Comunicación Industriales"
 PRACTICA = "Práctica 1 · Visualizador de un UR3e por TCP/IP"
@@ -34,6 +36,8 @@ LETRA = "Calibri"
 # ---------------------------------------------------------------------
 def campo(parrafo, codigo):
     """Campo de Word (PAGE o NUMPAGES): Word pone el número al abrir el documento."""
+    # python-docx no ofrece un helper de alto nivel para estos campos; se crea
+    # el XML mínimo que Word recalcula al abrir el documento.
     r = parrafo.add_run()
     for tipo in ("begin", "instr", "separate", "texto", "end"):
         if tipo == "instr":
@@ -51,6 +55,7 @@ def campo(parrafo, codigo):
 
 
 def sin_bordes(tabla):
+    # Las tablas se usan como layout auxiliar, no como tablas visibles.
     bordes = OxmlElement("w:tblBorders")
     for lado in ("top", "left", "bottom", "right", "insideH", "insideV"):
         b = OxmlElement(f"w:{lado}")
@@ -60,6 +65,7 @@ def sin_bordes(tabla):
 
 
 def linea_inferior(parrafo):
+    # Una línea azul separa el encabezado del contenido sin añadir otra imagen.
     bordes = OxmlElement("w:pBdr")
     b = OxmlElement("w:bottom")
     for k, v in (("w:val", "single"), ("w:sz", "8"), ("w:space", "1"), ("w:color", "005EB8")):
@@ -69,6 +75,7 @@ def linea_inferior(parrafo):
 
 
 def sombrear(celda, color):
+    # El sombreado se aplica al XML de la celda porque es una propiedad de Word.
     s = OxmlElement("w:shd")
     s.set(qn("w:val"), "clear")
     s.set(qn("w:fill"), color)
@@ -77,6 +84,8 @@ def sombrear(celda, color):
 
 def texto_rico(parrafo, texto, tam=None):
     """Admite **negrita** y `código` dentro del texto."""
+    # Se divide solo en los dos marcadores que usa la memoria; el resto conserva
+    # el texto literal y evita introducir un parser Markdown completo.
     for trozo in re.split(r"(\*\*[^*]+\*\*|`[^`]+`)", texto):
         if not trozo:
             continue
@@ -96,6 +105,8 @@ class Documento:
     """Un .docx con el encabezado (logo, autor) y el pie (Página X de Y) de la entrega."""
 
     def __init__(self, tam=11):
+        # Cada documento comparte márgenes, tipografía, encabezado y pie para
+        # que la entrega tenga un formato uniforme.
         self.tam = tam
         self.doc = Document()
         normal = self.doc.styles["Normal"]
@@ -160,6 +171,7 @@ class Documento:
         texto_rico(p, texto)
 
     def figura(self, nombre, ancho_cm, pie=None):
+        # El pie se mantiene junto a la figura para que Word no los separe.
         p = self.doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.paragraph_format.space_before = Pt(4)
@@ -192,6 +204,7 @@ class Documento:
         self.doc.add_paragraph().paragraph_format.space_after = Pt(0)
 
     def tabla(self, filas, anchos):
+        # La primera fila se trata como cabecera; las demás son datos normales.
         t = self.doc.add_table(rows=len(filas), cols=len(filas[0]))
         t.style = "Table Grid"
         t.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -210,6 +223,7 @@ class Documento:
         self.doc.add_paragraph().paragraph_format.space_after = Pt(0)
 
     def guardar(self, nombre):
+        # Las rutas de salida son relativas a memoria/, nunca al directorio actual.
         self.doc.save(CARPETA / nombre)
         print("Guardado", CARPETA / nombre)
 

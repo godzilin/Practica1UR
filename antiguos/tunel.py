@@ -14,6 +14,8 @@ import struct
 import threading
 import time
 
+# Ejemplo histórico de productor-consumidor: el lector produce q_actual y el
+# escritor la transforma en URScript para el segundo robot.
 # ---------------------------------------------------------------
 # 1. CONFIGURACIÓN
 # ---------------------------------------------------------------
@@ -41,6 +43,7 @@ stop_event = threading.Event()        # para parar los hilos
 # ---------------------------------------------------------------
 def recv_exact(sock, n):
     """Lee exactamente n bytes del socket."""
+    # TCP puede fragmentar incluso una cabecera, así que se acumula hasta n.
     data = bytearray()
     while len(data) < n:
         chunk = sock.recv(n - len(data))
@@ -52,6 +55,7 @@ def recv_exact(sock, n):
 
 def read_message(sock):
     """Lee un mensaje completo: (tipo, contenido)."""
+    # length cuenta también los 5 bytes de la cabecera primaria.
     length, = struct.unpack("!I", recv_exact(sock, 4))
     msg_type, = struct.unpack("!B", recv_exact(sock, 1))
     return msg_type, recv_exact(sock, length - 5)
@@ -59,6 +63,7 @@ def read_message(sock):
 
 def parse_joints(payload):
     """Busca el subpaquete de articulaciones y devuelve 6 ángulos (rad)."""
+    # Se devuelve el primer subpaquete de articulaciones y se ignoran los demás.
     offset = 0
     while offset < len(payload):
         size, sub_type = struct.unpack_from("!IB", payload, offset)
@@ -75,6 +80,7 @@ def parse_joints(payload):
 # ---------------------------------------------------------------
 def reader_worker():
     """Lee sin parar el robot 1 y actualiza 'source'."""
+    # Solo este hilo escribe source; el Lock coordina la lectura del escritor.
     while not stop_event.is_set():
         try:
             print(f"[LECTOR] Conectando a robot 1 ({SRC_HOST}:{SRC_PORT})")
@@ -99,6 +105,7 @@ def reader_worker():
 # ---------------------------------------------------------------
 def preparar_destino():
     """Enciende el robot 2 y suelta los frenos para que pueda moverse."""
+    # Dashboard usa comandos de texto independientes del flujo de estado.
     try:
         with socket.create_connection((DST_HOST, DST_DASH_PORT), timeout=5) as d:
             d.settimeout(5)
@@ -135,6 +142,7 @@ def cmd_movej(q):
 # ---------------------------------------------------------------
 def writer_worker():
     """A 10 Hz manda al robot 2 la última posición del robot 1."""
+    # El escritor copia la lectura bajo lock y libera el lock antes de enviar.
     ultimo_enviado = None
     while not stop_event.is_set():
         try:
@@ -177,6 +185,7 @@ def writer_worker():
 # 8. PROGRAMA PRINCIPAL
 # ---------------------------------------------------------------
 def main():
+    # El principal no trabaja con sockets: coordina apagado y ciclo de vida.
     if PREPARAR_DESTINO:
         preparar_destino()
 

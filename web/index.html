@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UR3e Control Desk</title>
+  <link rel="stylesheet" href="/app.css">
+  <style>
+    .output-panel{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+    .output-panel summary{color:var(--accent);cursor:pointer;font-size:10px;font-weight:bold;letter-spacing:.08em}
+    .output-panel pre{background:#20282d;color:#dce5e5;min-height:76px;max-height:240px;overflow:auto;padding:12px;margin:9px 0 0;white-space:pre-wrap;font:11px/1.5 Consolas,'Courier New',monospace}
+    .output-viewer{background:var(--panel);border:1px solid var(--line);padding:16px}
+    .output-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+    .output-toolbar label{color:var(--muted);font-size:11px}
+    .output-toolbar select{border:1px solid var(--line);background:#fff;padding:8px;min-width:240px;color:var(--ink)}
+    .output-toolbar button{border:1px solid var(--line);background:#fff;padding:8px 10px;color:var(--ink);font-size:11px}
+    .output-status{margin-left:auto;color:var(--muted);font-size:11px}
+    .output-console{background:#20282d;color:#dce5e5;min-height:360px;max-height:620px;overflow:auto;padding:16px;margin:0;white-space:pre-wrap;font:12px/1.55 Consolas,'Courier New',monospace}
+    .document-viewer{background:var(--panel);border:1px solid var(--line);overflow:hidden}
+    .document-viewer iframe{display:block;width:100%;height:720px;border:0;background:#697277}
+    .document-markdown{padding:28px 34px;max-width:900px;line-height:1.65;color:var(--ink)}
+    .document-markdown h1,.document-markdown h2,.document-markdown h3{line-height:1.2;margin:0 0 14px;color:var(--ink)}
+    .document-markdown h1{font-size:30px;border-bottom:1px solid var(--line);padding-bottom:12px}
+    .document-markdown h2{font-size:22px;margin-top:30px}.document-markdown h3{font-size:17px;margin-top:22px}
+    .document-markdown p{margin:0 0 14px}.document-markdown ul,.document-markdown ol{padding-left:25px;margin:0 0 16px}
+    .document-markdown li{margin:4px 0}.document-markdown code{background:#edf1f1;padding:2px 5px;font:12px Consolas,'Courier New',monospace}
+    .document-markdown pre{background:#20282d;color:#dce5e5;padding:15px;overflow:auto;font:12px/1.5 Consolas,'Courier New',monospace}
+    .document-markdown a{color:var(--accent)}
+    @media(max-width:760px){.output-toolbar{align-items:flex-start;flex-wrap:wrap}.output-toolbar select{min-width:0;flex:1}.output-status{width:100%;margin-left:0}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">UR</span><div><strong>UR3e Control</strong><small>Panel local</small></div></div>
+      <div class="connection"><span class="pulse"></span><span>LOCAL</span><button id="refresh" class="icon-button" title="Actualizar">Actualizar</button></div>
+    </header>
+    <main>
+      <section class="hero">
+        <div><p class="eyebrow">PRACTICA 1</p><h1>Control y<br><em>visualizacion</em></h1><p class="lede">Ejecuta los visualizadores y gestiona los robots configurados desde esta interfaz local.</p></div>
+      </section>
+      <nav class="tabs" aria-label="Secciones principales">
+        <button class="tab active" data-tab="operations">Visualizadores <span id="tab-running-count">0</span></button>
+        <button class="tab" data-tab="output">Salida</button>
+        <button class="tab" data-tab="configuration">Robots</button>
+        <button class="tab" data-tab="documentation">Documentacion</button>
+      </nav>
+      <section class="tab-panel active" data-panel="operations">
+        <div class="section-heading"><div><p class="eyebrow">OPERACIONES</p><h2>Visualizadores</h2></div><span id="running-count" class="counter">0 activos</span></div>
+        <div id="programs" class="program-grid"></div>
+      </section>
+      <section class="tab-panel" data-panel="output" hidden>
+        <div class="section-heading"><div><p class="eyebrow">CONSOLA</p><h2>Salida de los procesos</h2></div></div>
+        <div class="output-viewer">
+          <div class="output-toolbar"><label for="output-program">Proceso</label><select id="output-program"></select><button id="output-latest" type="button">Ultimas lineas</button><span id="output-status" class="output-status"></span></div>
+          <pre id="output-console" class="output-console">No hay procesos iniciados.</pre>
+        </div>
+      </section>
+      <section class="tab-panel" data-panel="configuration" hidden>
+        <div class="section-heading"><div><p class="eyebrow">CONFIGURACION</p><h2>Robots configurados</h2></div><div class="section-actions"><button id="add-robot" class="secondary-button">+ Anadir robot</button><button id="save" class="save-button">Guardar cambios</button></div></div>
+        <div id="robots" class="robots-list"></div>
+      </section>
+      <section class="tab-panel" data-panel="documentation" hidden>
+        <div class="section-heading"><div><p class="eyebrow">DOCUMENTACION</p><h2>Archivos del proyecto</h2></div></div>
+        <div id="documents" class="documents-list"></div>
+        <section id="viewer" class="viewer-section" hidden>
+          <div class="viewer-heading"><strong id="viewer-title"></strong><button id="close-viewer" class="secondary-button">Cerrar</button></div>
+          <div class="document-viewer"><iframe id="pdf-viewer" title="Documento PDF" hidden></iframe><article id="text-viewer" class="document-markdown" hidden></article></div>
+        </section>
+      </section>
+      <div id="notice" class="notice" role="status"></div>
+    </main>
+    <footer><span>Practica 1 UR3e</span><span>Todo permanece en esta carpeta</span></footer>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

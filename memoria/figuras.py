@@ -20,12 +20,16 @@ DATOS = CARPETA / "datos"
 SALIDA = CARPETA / "figuras"
 SALIDA.mkdir(exist_ok=True)
 
+# Paleta compartida por todas las figuras para que diagramas, capturas y
+# gráficas se lean como una misma memoria.
 AZUL, AZUL_CLARO, NARANJA, ROJO, GRIS, VERDE = "#005EB8", "#D6E6F7", "#E87722", "#C62828", "#555555", "#2E7D32"
 plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 10, "axes.spines.top": False,
                      "axes.spines.right": False, "savefig.dpi": 220, "savefig.bbox": "tight"})
 
 
 def caja(ax, x, y, w, h, texto, color=AZUL_CLARO, borde=AZUL, tam=10, negrita=False):
+    # Los diagramas usan cajas y flechas pequeñas en vez de depender de un
+    # editor externo; así se pueden regenerar tras cambiar el diseño.
     ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.02,rounding_size=0.08",
                                 fc=color, ec=borde, lw=1.4))
     ax.text(x + w / 2, y + h / 2, texto, ha="center", va="center", fontsize=tam,
@@ -33,6 +37,8 @@ def caja(ax, x, y, w, h, texto, color=AZUL_CLARO, borde=AZUL, tam=10, negrita=Fa
 
 
 def flecha(ax, a, b, texto="", color=AZUL, curva=0.0, lado=0.12, tam=8.5, estilo="-|>", ls="-", dx=0.0, ha="center"):
+    # La etiqueta se coloca en el punto medio para mantener el diagrama legible
+    # aunque cambien las coordenadas de origen y destino.
     ax.add_patch(FancyArrowPatch(a, b, arrowstyle=estilo, mutation_scale=14, color=color, lw=1.5,
                                  connectionstyle=f"arc3,rad={curva}", linestyle=ls, shrinkA=2, shrinkB=2))
     if texto:
@@ -41,7 +47,8 @@ def flecha(ax, a, b, texto="", color=AZUL, curva=0.0, lado=0.12, tam=8.5, estilo
 
 
 # ---------------------------------------------------------------------
-# 1. Captura de la aplicación (recorte)
+# 1. Capturas: se recortan para eliminar bordes de la ventana y centrar la
+# información relevante de la defensa.
 # ---------------------------------------------------------------------
 img = mpimg.imread(DATOS / "captura_app.png")
 plt.imsave(SALIDA / "captura.png", img[0:470, 0:860])
@@ -53,7 +60,8 @@ plt.imsave(SALIDA / "captura_varios.png", img[150:420, 280:900])
 
 
 # ---------------------------------------------------------------------
-# Interfaz de tiempo real (bloque B): un paquete y el ritmo de llegada frente al de dibujo
+# 2. Interfaz de tiempo real (bloque B): se compara un paquete fijo con el
+# ritmo de llegada de datos y el ritmo deliberadamente menor de dibujo.
 # ---------------------------------------------------------------------
 fig, (a1, a2) = plt.subplots(2, 1, figsize=(7.2, 2.6), gridspec_kw={"height_ratios": [1, 1.1]})
 a1.set_xlim(0, 1220), a1.set_ylim(0, 1), a1.axis("off")
@@ -81,7 +89,8 @@ plt.close(fig)
 
 
 # ---------------------------------------------------------------------
-# 2. Arquitectura
+# 3. Arquitectura: el gráfico hace visible la frontera entre red, estado
+# compartido y PyBullet.
 # ---------------------------------------------------------------------
 fig, ax = plt.subplots(figsize=(7.2, 2.7))
 ax.set_xlim(0, 11.6), ax.set_ylim(0, 4.0), ax.axis("off")
@@ -105,7 +114,8 @@ plt.close(fig)
 
 
 # ---------------------------------------------------------------------
-# 3. Del flujo TCP a q_actual
+# 4. Del flujo TCP a q_actual: recv(), mensajes y subpaquetes son niveles
+# diferentes y no deben confundirse.
 # ---------------------------------------------------------------------
 fig, ax = plt.subplots(figsize=(7.2, 2.9))
 ax.set_xlim(0, 10.6), ax.set_ylim(0, 4.3), ax.axis("off")
@@ -132,7 +142,7 @@ plt.close(fig)
 
 
 # ---------------------------------------------------------------------
-# 4. Máquina de estados del bloque D
+# 5. Máquina de estados del bloque D.
 # ---------------------------------------------------------------------
 fig, ax = plt.subplots(figsize=(7.2, 3.2))
 ax.set_xlim(0, 11.0), ax.set_ylim(-0.6, 4.6), ax.axis("off")
@@ -161,7 +171,8 @@ plt.close(fig)
 
 
 # ---------------------------------------------------------------------
-# 5. Confirmar un movej con datos reales de URSim
+# 6. Confirmar un movej con datos reales de URSim: se superponen las dos
+# interfaces para justificar cuándo se considera alcanzado un objetivo.
 # ---------------------------------------------------------------------
 import math
 d = json.loads((DATOS / "movej.json").read_text())
@@ -194,7 +205,7 @@ plt.close(fig)
 
 
 # ---------------------------------------------------------------------
-# 6. Preguntas: qué trae cada recv() y retraso de cada interfaz
+# 7. Preguntas: qué trae cada recv() y qué retraso introduce cada interfaz.
 # ---------------------------------------------------------------------
 recv = json.loads((DATOS / "recv.json").read_text())
 fig, (a1, a2) = plt.subplots(1, 2, figsize=(7.2, 2.3), gridspec_kw={"width_ratios": [1.4, 1]})

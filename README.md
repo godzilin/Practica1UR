@@ -16,16 +16,19 @@
 
 ### Linux y macOS
 
-Instala Python 3.11 y las dependencias del proyecto en un entorno virtual. El
-lanzador disponible para estos sistemas es `lanzador.sh`.
+El proyecto no necesita instalar nada fuera de su carpeta salvo el runtime nativo
+del sistema. En Linux, ejecuta una vez `preparar_linux.sh`; crea `.venv` dentro
+del proyecto e instala las dependencias. El lanzador disponible para estos
+sistemas es `lanzador.sh`.
 
 ```bash
-python3.11 -m venv .venv
-source .venv/bin/activate
-python -m pip install pybullet pybullet-planning numpy matplotlib python-docx
-python -m pip install --no-deps material/ur3e_rg2-0.1.0-py3-none-any.whl
+chmod +x preparar_linux.sh lanzador.sh
+./preparar_linux.sh
 ./lanzador.sh
 ```
+
+En macOS se puede usar el mismo procedimiento cambiando `python3` por la
+version instalada, si hace falta.
 
 ### Windows
 
@@ -40,14 +43,26 @@ Una vez preparado, haz doble clic en `lanzador_windows.bat` o ejecútalo desde C
 lanzador_windows.bat
 ```
 
-El menú de Windows ofrece las mismas opciones que `lanzador.sh` y abre cada
-programa en una ventana CMD independiente. El lanzador no crea entornos ni usa
-`pip`: comprueba offline que `.venv` contiene `pybullet`, `UR3e_rg2`, `numpy`,
-`matplotlib` y `python-docx`; si falta algo, muestra el paquete y termina.
+El lanzador comprueba offline que el entorno contiene `pybullet`,
+`UR3e_rg2`, `numpy`, `matplotlib` y `python-docx`, y abre el panel web local.
+Desde el panel se inicia o detiene cada visualizador y se editan los robots.
 
 La carpeta `python/` se genera localmente y queda excluida de Git porque contiene
-binarios y librerías de Windows. Cada equipo ejecuta `preparar_windows.bat` una
-vez; después el lanzador funciona sin conexión y solo comprueba las librerías.
+binarios y librerías de Windows. Cada equipo ejecuta el preparador de su sistema
+una vez; después el lanzador solo comprueba las librerías y puede funcionar sin
+conexion.
+
+### Panel web local
+
+`lanzador_windows.bat` y `lanzador.sh` abren el mismo panel en
+`http://127.0.0.1:8765`. No usa Node, un servidor externo ni archivos fuera del
+proyecto. El navegador es solo la interfaz: los visualizadores siguen siendo
+procesos Python y sus ventanas de PyBullet se abren al pulsar **Iniciar**.
+
+La carpeta es portable a otro equipo, pero los ejecutables y wheels de Python
+son especificos de cada sistema y arquitectura. Por eso Windows usa `python/`
+y Linux/macOS usa `.venv`; no es posible ejecutar un binario Windows de Python
+en Linux sin un runtime Linux equivalente.
 
 ## Red
 
@@ -70,6 +85,49 @@ usa todos.
 - `visualizador/ensenar_reproducir.py`: mini-aplicación Enseñar y reproducir; teclas con la ventana de PyBullet activa (Espacio, ← →, B, D, P, Enter, Esc, G/C, E, S)
 - `visualizador/prueba_robustez.py`: prueba sin robot; mete 20 000 mensajes rotos en el parser y `robots.json` erróneos (debe acabar en `TODO OK`)
 - `visualizador/varios_robots.py`: varios robots en la misma ventana; los robots se configuran en `visualizador/robots.json` (nombre, host, puerto, posición `[x, y, z, roll, pitch, yaw]`)
+
+## Ruta rápida para entender el código
+
+La práctica está organizada de menor a mayor complejidad:
+
+1. `test_conexion.py` enseña el ciclo mínimo: conectar, separar mensajes TCP,
+  leer el estado y confirmar un `movej` con `isProgramRunning` y `q_actual`.
+2. `primaria.py` contiene el parser reutilizable de la interfaz primaria:
+  `cargar_robots`, `cortar_mensajes`, `subpaquetes` y `leer_estado`.
+3. `tiempo_real.py` aplica la misma idea a paquetes de longitud fija del puerto
+  30003 y desacopla los 500 paquetes/s del dibujo a 30 FPS.
+4. `varios_robots.py` añade un hilo receptor por robot y deja a un único hilo
+  principal el acceso a PyBullet.
+5. `ensenar_reproducir.py` reutiliza el parser y añade una máquina de estados,
+  teclado, secuencias, previsualización y envío seguro de órdenes.
+
+Los comentarios de los scripts explican cada bloque con este mismo recorrido.
+La guía ampliada de lectura, protocolo y pruebas está en
+[`docs/guia_codigo.md`](docs/guia_codigo.md). El diseño y el guion de defensa
+del bloque D están en [`docs/ensenar_reproducir.md`](docs/ensenar_reproducir.md).
+
+### Flujo de una ejecución
+
+`robots.json` aporta la IP y el puerto. El receptor TCP acumula bytes porque
+`recv()` no conserva los límites de los mensajes; el parser usa la longitud de
+cada cabecera para reconstruirlos. Después se extraen los seis `q_actual`, se
+transforman al convenio de PyBullet y se dibuja el robot. Si la conexión cae,
+los scripts principales limpian el socket y reintentan sin perder el proceso.
+
+En el bloque D, el hilo receptor solo actualiza estado y errores. El bucle
+principal es el único que usa PyBullet y envía órdenes: así la interfaz sigue
+respondiendo mientras la red espera datos.
+
+## Documentación y utilidades
+
+| Ruta | Para qué sirve |
+|---|---|
+| `docs/guia_codigo.md` | Recorrido didáctico por protocolo, hilos, pruebas y orden recomendado de lectura |
+| `docs/ensenar_reproducir.md` | Diseño, estados, seguridad y guion de defensa del bloque D |
+| `memoria/figuras.py` | Regenera las figuras a partir de `memoria/datos/` |
+| `memoria/generar_memoria.py` | Genera `memoria.docx` y `preguntas.docx` |
+| `visualizador/configurar_robots.py` | Edita `robots.json` y conserva una copia `.bak` |
+| `visualizador/prueba_robustez.py` | Prueba parsers y validación de configuración sin conectar a un robot |
 
 ## Robustez: qué pasa si...
 
