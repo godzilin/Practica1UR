@@ -50,6 +50,20 @@ Cada opción del menú abre una terminal nueva donde se muestran únicamente las
 salidas del script elegido. La terminal del menú permanece disponible para
 lanzar otro script.
 
+### Windows
+
+Después de tener el repositorio instalado, haz doble clic en
+`lanzador_windows.bat` o ejecútalo desde CMD:
+
+```bat
+lanzador_windows.bat
+```
+
+El menú de Windows ofrece las mismas opciones que `lanzador.sh` y abre cada
+programa en una ventana CMD independiente. Necesita que exista `.venv` con las
+dependencias instaladas; el instalador `.sh` se ejecuta desde WSL, no desde
+PowerShell o CMD.
+
 El instalador clona el repositorio en `~/Practica1UR`, crea `.venv` e instala
 PyBullet, NumPy, Matplotlib, `python-docx` y la wheel `ur3e_rg2`. Para usar otra
 carpeta, por ejemplo una ruta compartida, se puede ejecutar:
