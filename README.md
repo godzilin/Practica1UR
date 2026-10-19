@@ -46,6 +46,10 @@ Después de instalar, el menú se puede abrir de nuevo con:
 ~/Practica1UR/lanzador.sh
 ```
 
+Cada opción del menú abre una terminal nueva donde se muestran únicamente las
+salidas del script elegido. La terminal del menú permanece disponible para
+lanzar otro script.
+
 El instalador clona el repositorio en `~/Practica1UR`, crea `.venv` e instala
 PyBullet, NumPy, Matplotlib, `python-docx` y la wheel `ur3e_rg2`. Para usar otra
 carpeta, por ejemplo una ruta compartida, se puede ejecutar:

@@ -12,9 +12,29 @@ fi
 
 ejecutar() {
     clear 2>/dev/null || true
-    printf 'Ejecutando %s...\n\n' "$1"
-    "$PYTHON" "$BASE/visualizador/$1"
-    printf '\nEl programa ha terminado. Pulsa Enter para volver al menu.'
+    local script="$BASE/visualizador/$1"
+    local comando
+    printf -v comando 'printf "Ejecutando %%s...\\n\\n" %q; %q %q; estado=$?; printf "\\nEl programa ha terminado (codigo %%s). Pulsa Enter para cerrar." "$estado"; read -r' "$1" "$PYTHON" "$script"
+
+    if command -v x-terminal-emulator >/dev/null 2>&1; then
+        x-terminal-emulator -e bash -c "$comando" >/dev/null 2>&1 &
+    elif command -v gnome-terminal >/dev/null 2>&1; then
+        gnome-terminal -- bash -c "$comando" >/dev/null 2>&1 &
+    elif command -v konsole >/dev/null 2>&1; then
+        konsole -e bash -c "$comando" >/dev/null 2>&1 &
+    elif command -v xfce4-terminal >/dev/null 2>&1; then
+        xfce4-terminal --command="bash -c '$comando'" >/dev/null 2>&1 &
+    elif command -v kitty >/dev/null 2>&1; then
+        kitty bash -c "$comando" >/dev/null 2>&1 &
+    elif command -v xterm >/dev/null 2>&1; then
+        xterm -e bash -c "$comando" >/dev/null 2>&1 &
+    else
+        printf 'No se encontro un emulador de terminal grafico; se usara esta terminal.\n\n'
+        bash -c "$comando"
+    fi
+
+    printf 'Se ha abierto una terminal nueva para %s.\n' "$1"
+    printf 'Pulsa Enter para volver al menu.'
     read -r
 }
 
