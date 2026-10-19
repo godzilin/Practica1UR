@@ -9,7 +9,7 @@ import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import quote, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 BASE = Path(__file__).resolve().parent
 WEB = BASE / "web"
@@ -27,7 +27,7 @@ PROGRAMAS = {
 }
 PROCESOS = {}
 LOCK = threading.Lock()
-MAX_LINEAS_SALIDA = 5000
+MAX_LINEAS_SALIDA = 2000
 
 
 def leer_robots():
@@ -40,19 +40,13 @@ def guardar_robots(robots):
     for robot in robots:
         if not isinstance(robot, dict):
             raise ValueError("Cada robot debe ser un objeto")
-        for clave in ("nombre", "host", "puerto", "posicion"):
+        for clave in ("nombre", "host"):
             if clave not in robot:
                 raise ValueError(f"Falta el campo {clave}")
         if not isinstance(robot["nombre"], str) or not robot["nombre"].strip():
             raise ValueError("El nombre no puede estar vacio")
         if not isinstance(robot["host"], str) or not robot["host"].strip():
             raise ValueError("El host no puede estar vacio")
-        if not isinstance(robot["puerto"], int) or not 1 <= robot["puerto"] <= 65535:
-            raise ValueError("El puerto debe estar entre 1 y 65535")
-        if not isinstance(robot["posicion"], list) or len(robot["posicion"]) != 6:
-            raise ValueError("La posicion debe tener 6 numeros")
-        if not all(isinstance(valor, (int, float)) and not isinstance(valor, bool) for valor in robot["posicion"]):
-            raise ValueError("La posicion solo puede contener numeros")
     nombres = [robot["nombre"].strip() for robot in robots]
     if len(set(nombres)) != len(nombres):
         raise ValueError("Los nombres de los robots no pueden repetirse")
@@ -76,14 +70,24 @@ def recoger_salida(clave, salida, registro):
     salida.close()
 
 
-def estado_procesos():
+def estado_procesos(incluir_salida=False):
     limpiar_procesos()
     with LOCK:
         return {
             clave: {"pid": proceso.pid, "salida": proceso.poll(), "inicio": inicio,
-                    "salida_texto": "\n".join(registro)}
+                    **({"salida_texto": "\n".join(registro)} if incluir_salida else {})}
             for clave, (proceso, inicio, registro) in PROCESOS.items()
         }
+
+
+def salida_proceso(clave):
+    with LOCK:
+        datos = PROCESOS.get(clave)
+        if not datos:
+            return None
+        proceso, inicio, registro = datos
+        return {"pid": proceso.pid, "salida": proceso.poll(),
+                "salida_texto": "\n".join(registro)}
 
 
 def iniciar(clave):
@@ -176,6 +180,13 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if ruta == "/api/programas":
                 self.responder({"programas": PROGRAMAS, "procesos": estado_procesos()})
+            elif ruta == "/api/salida":
+                clave = parse_qs(urlparse(self.path).query).get("programa", [""])[0]
+                salida = salida_proceso(clave)
+                if salida is None:
+                    self.responder({"error": "Proceso no encontrado"}, 404)
+                else:
+                    self.responder(salida)
             elif ruta == "/api/robots":
                 self.responder({"robots": leer_robots()})
             elif ruta == "/api/documentos":

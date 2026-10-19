@@ -24,7 +24,7 @@ from primaria import cargar_robots, grados, SIGNOS, OFFSETS    # el convenio se 
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
 # =====================================================================
-# La IP se toma del primer robot de robots.json (su "puerto" es el de la primaria y aquí no se usa)
+# La IP se toma del primer robot de robots.json; este script usa su propia interfaz.
 PUERTO = 30003              # interfaz de tiempo real
 
 # Qué se muestra por consola:

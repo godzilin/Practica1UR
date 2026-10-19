@@ -72,11 +72,8 @@ def prueba_parser():
 
 def prueba_robots_json():
     malos = ["", "{", "[]", "{}", "[1]", '[{"nombre": "a"}]',
-             '[{"nombre": "a", "host": "1.2.3.4", "puerto": "30001", "posicion": [0,0,0,0,0,0]}]',
-             '[{"nombre": "a", "host": "1.2.3.4", "puerto": 30001, "posicion": [0,0,0]}]',
-             '[{"nombre": "a", "host": "", "puerto": 30001, "posicion": [0,0,0,0,0,0]}]',
-             '[{"nombre": "a", "host": "x", "puerto": 30001, "posicion": [0,0,0,0,0,0]},'
-             ' {"nombre": "a", "host": "y", "puerto": 30001, "posicion": [0,0,0,0,0,0]}]']
+             '[{"nombre": "a", "host": ""}]',
+             '[{"nombre": "a", "host": "x"}, {"nombre": "a", "host": "y"}]']
     with tempfile.TemporaryDirectory() as carpeta:
         fichero = Path(carpeta) / "robots.json"
         for texto in malos:
@@ -91,7 +88,7 @@ def prueba_robots_json():
             raise AssertionError("fichero inexistente aceptado")
         except SystemExit:
             pass
-        bueno = [{"nombre": "a", "host": "1.2.3.4", "puerto": 30001, "posicion": [0] * 6}]
+        bueno = [{"nombre": "a", "host": "1.2.3.4"}]
         fichero.write_text(json.dumps(bueno), encoding="utf-8")
         assert cargar_robots(fichero) == bueno
     print(f"robots.json: {len(malos) + 1} ficheros erróneos rechazados con mensaje")

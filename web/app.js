@@ -100,7 +100,8 @@ function renderOutput(programas, procesos) {
   selector.disabled = !claves.length;
   const proceso = procesos[salidaSeleccionada];
   $('#output-status').textContent = proceso ? (proceso.salida === null ? `ACTIVO · PID ${proceso.pid}` : `FINALIZADO · codigo ${proceso.salida}`) : '';
-  mostrarSalida(proceso);
+  if (proceso) cargarSalida(salidaSeleccionada);
+  else mostrarSalida(null);
 }
 
 function mostrarSalida(proceso, forzarFinal = false) {
@@ -112,12 +113,22 @@ function mostrarSalida(proceso, forzarFinal = false) {
   else consola.scrollTop = posicionAnterior;
 }
 
+async function cargarSalida(clave, forzarFinal = false) {
+  if (!clave) return mostrarSalida(null);
+  try {
+    const proceso = await api(`/api/salida?programa=${encodeURIComponent(clave)}`);
+    if (clave !== salidaSeleccionada) return;
+    $('#output-status').textContent = proceso.salida === null ? `ACTIVO · PID ${proceso.pid}` : `FINALIZADO · codigo ${proceso.salida}`;
+    mostrarSalida(proceso, forzarFinal);
+  } catch (error) {
+    if (clave === salidaSeleccionada) $('#output-status').textContent = '';
+  }
+}
+
 function renderRobots(robots) {
   $('#robots').innerHTML = robots.map((robot, index) => `<div class="robot-row" data-index="${index}">
     <div><label>Nombre</label><input data-field="nombre" value="${escapeHtml(robot.nombre)}"></div>
     <div><label>Host / IP</label><input data-field="host" value="${escapeHtml(robot.host)}"></div>
-    <div><label>Puerto</label><input data-field="puerto" type="number" min="1" max="65535" value="${robot.puerto || 30001}"></div>
-    <div><label>Posicion [x, y, z, roll, pitch, yaw]</label><input data-field="posicion" value="${escapeHtml((robot.posicion || []).join(', '))}"></div>
     <button class="remove-robot" type="button" title="Eliminar robot">Eliminar</button>
   </div>`).join('');
   document.querySelectorAll('.remove-robot').forEach(button => button.addEventListener('click', () => {
@@ -153,9 +164,7 @@ function openDocument(button) {
 document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => activateTab(tab.dataset.tab)));
 $('#output-program').addEventListener('change', event => {
   salidaSeleccionada = event.target.value;
-  const proceso = procesosActuales[salidaSeleccionada];
-  $('#output-status').textContent = proceso ? (proceso.salida === null ? `ACTIVO · PID ${proceso.pid}` : `FINALIZADO · codigo ${proceso.salida}`) : '';
-  mostrarSalida(proceso, true);
+  cargarSalida(salidaSeleccionada, true);
 });
 $('#output-latest').addEventListener('click', () => {
   $('#output-console').scrollTop = $('#output-console').scrollHeight;
@@ -173,11 +182,10 @@ async function refresh() {
 $('#add-robot').addEventListener('click', () => {
   const rows = [...document.querySelectorAll('.robot-row')];
   const position = rows.length;
-  const robot = {nombre: `Robot_${position + 1}`, host: '127.0.0.1', puerto: 30001, posicion: [0, 0, 0, 0, 0, 0]};
+  const robot = {nombre: `Robot_${position + 1}`, host: '127.0.0.1'};
   renderRobots(rows.map(row => {
     const value = field => row.querySelector(`[data-field="${field}"]`).value;
-    return {nombre: value('nombre'), host: value('host'), puerto: Number(value('puerto')),
-      posicion: value('posicion').replaceAll(',', ' ').trim().split(/\s+/).map(Number)};
+    return {nombre: value('nombre'), host: value('host')};
   }).concat(robot));
 });
 
@@ -197,8 +205,7 @@ $('#save').addEventListener('click', async () => {
   try {
     const robots = [...document.querySelectorAll('.robot-row')].map(row => {
       const value = field => row.querySelector(`[data-field="${field}"]`).value;
-      return {nombre: value('nombre'), host: value('host'), puerto: Number(value('puerto')),
-        posicion: value('posicion').replaceAll(',', ' ').trim().split(/\s+/).map(Number)};
+      return {nombre: value('nombre'), host: value('host')};
     });
     await api('/api/robots', {method: 'POST', body: JSON.stringify({robots})});
     notice('Configuracion guardada correctamente.', true);
@@ -208,3 +215,4 @@ $('#refresh').addEventListener('click', refresh);
 $('#close-viewer').addEventListener('click', () => { $('#viewer').hidden = true; $('#pdf-viewer').src = ''; });
 refresh();
 window.setInterval(refresh, 3000);
+window.setInterval(() => cargarSalida(salidaSeleccionada), 700);

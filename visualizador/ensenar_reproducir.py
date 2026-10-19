@@ -41,6 +41,7 @@ from primaria import (cargar_robots, cortar_mensajes, leer_estado, describir_err
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
 # =====================================================================
+PUERTO = 30001              # interfaz primaria; también permite enviar órdenes
 V = 0.3                     # rad/s   velocidad de los movej: MÁXIMO permitido en el robot real
 A = 0.5                     # rad/s²  aceleración de los movej: MÁXIMO permitido en el robot real
 TOLERANCIA = 0.01           # rad: distancia máxima al punto para darlo por alcanzado
@@ -593,10 +594,8 @@ def leer_teclas():
 
 
 def main():
-    config = cargar_robots()[0]
-    print(f"Robot: {config['nombre']} ({config['host']}:{config['puerto']})")
-    if config["puerto"] != 30001:
-        raise SystemExit("Para enviar órdenes hace falta el puerto 30001 (el 30011 es de solo lectura)")
+    config = {**cargar_robots()[0], "puerto": PUERTO}
+    print(f"Robot: {config['nombre']} ({config['host']}:{PUERTO})")
     if not (0 < V <= 0.3 and 0 < A <= 0.5):
         raise SystemExit("V y A superan los límites de la práctica (0,3 rad/s y 0,5 rad/s²)")
 

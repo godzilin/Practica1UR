@@ -10,8 +10,8 @@ si un robot tarda o se desconecta, solo se bloquea su hilo y los demás siguen.
 
 - Cada hilo tiene su socket y su buffer, y solo escribe el último q de su robot.
 - Solo el bucle principal llama a PyBullet, a ritmo fijo (FPS).
-- La lista de robots (nombre, IP, puerto y posición en la escena) está en robots.json:
-  para añadir o cambiar robots no hay que tocar el código.
+- La lista de robots (nombre e IP) está en robots.json. El puerto es el de esta
+    interfaz y las posiciones se generan automáticamente para separarlos.
 
 Cómo usarlo: edita robots.json, cambia las constantes de CONFIGURACIÓN y pulsa F5 (o ▶).
 """
@@ -33,6 +33,8 @@ SIN_DATOS = 1.0                  # s sin estado nuevo = robot marcado como desco
 TIMEOUT = 5.0                    # s sin recibir nada = robot colgado o apagado
 REINTENTO = 2.0                  # s de espera antes de volver a conectar
 ALTURA_ETIQUETA = 0.8            # m por encima de la base donde se escribe el nombre
+PUERTO = 30001                   # interfaz primaria
+SEPARACION = 1.0                 # m entre robots en la escena
 # =====================================================================
 
 VERDE, ROJO = [0, 0.6, 0], [0.9, 0, 0]
@@ -76,6 +78,10 @@ def receptor(nombre, host, puerto):
 
 def main():
     robots = cargar_robots()
+    mitad = (len(robots) - 1) / 2
+    for indice, robot in enumerate(robots):
+        robot["puerto"] = PUERTO
+        robot["posicion"] = [(indice - mitad) * SEPARACION, 0.0, 0.0, 0.0, 0.0, 0.0]
 
     # 1. Escena: un único UR3eRG2 y un robot simulado por cada robot real
     from UR3e_rg2.dynamic_ur3e import UR3eRG2

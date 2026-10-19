@@ -16,31 +16,6 @@ def pedir(texto, actual=""):
     return respuesta or str(actual)
 
 
-def pedir_entero(texto, actual):
-    # El puerto se valida aquí para que robots.json no reciba texto inválido.
-    while True:
-        try:
-            valor = int(pedir(texto, actual))
-            if 1 <= valor <= 65535:
-                return valor
-        except ValueError:
-            pass
-        print("Introduce un puerto entre 1 y 65535.")
-
-
-def pedir_posicion(actual):
-    # La posición combina x, y, z y la orientación roll, pitch, yaw.
-    while True:
-        texto = pedir("Posicion x y z roll pitch yaw", " ".join(map(str, actual)))
-        try:
-            valores = [float(valor) for valor in texto.replace(",", " ").split()]
-            if len(valores) == 6:
-                return valores
-        except ValueError:
-            pass
-        print("Introduce exactamente 6 numeros separados por espacios.")
-
-
 def cargar():
     # Un fichero ausente o corrupto permite empezar desde una lista vacía.
     try:
@@ -71,7 +46,7 @@ def guardar(robots):
 
 
 def main():
-    # Se reutilizan los valores actuales y solo se solicitan los nuevos campos.
+    # Se reutilizan nombre y host; los scripts deciden puerto y posición.
     actuales = cargar()
     print(f"\nConfiguracion de robots: {FICHERO}")
     try:
@@ -89,8 +64,6 @@ def main():
         robots.append({
             "nombre": pedir("Nombre", actual.get("nombre", f"Robot_{indice + 1}")),
             "host": pedir("IP o nombre de host", actual.get("host", "127.0.0.1")),
-            "puerto": pedir_entero("Puerto", actual.get("puerto", 30001)),
-            "posicion": pedir_posicion(actual.get("posicion", [0.0] * 6)),
         })
 
     guardar(robots)

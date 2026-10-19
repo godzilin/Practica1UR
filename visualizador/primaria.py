@@ -21,9 +21,10 @@ import pybullet as p
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
 # =====================================================================
-# El robot (nombre, IP y puerto) NO se escribe aquí: se usa el primero de robots.json.
-# Para cambiar de robot (otra VM, un UR3e real) se edita ese fichero, sin tocar el código.
+# El robot (nombre e IP) se toma del primero de robots.json. El puerto pertenece
+# a esta interfaz y no se configura por robot.
 FICHERO_ROBOTS = "robots.json"   # en la misma carpeta que este script
+PUERTO = 30001                    # interfaz primaria
 
 # Qué se muestra por consola (un hito del enunciado en cada caso):
 #   "angulos"  -> A4/A5: los 6 ángulos en grados, una vez por segundo
@@ -76,7 +77,7 @@ def cargar_robots(fichero=FICHERO_ROBOTS):
     for r in robots:
         if not isinstance(r, dict):
             raise SystemExit(f"{fichero}: cada robot debe ser un objeto {{ ... }}, no {r!r}")
-        for clave in ("nombre", "host", "puerto", "posicion"):
+        for clave in ("nombre", "host"):
             if clave not in r:
                 raise SystemExit(f"{fichero}: al robot {r} le falta '{clave}'")
         nombre = r["nombre"]
@@ -85,13 +86,6 @@ def cargar_robots(fichero=FICHERO_ROBOTS):
         nombres.add(nombre)
         if not isinstance(r["host"], str) or not r["host"].strip():
             raise SystemExit(f"{fichero}: 'host' de {nombre} debe ser una IP entre comillas")
-        if not isinstance(r["puerto"], int) or isinstance(r["puerto"], bool) \
-                or not 1 <= r["puerto"] <= 65535:
-            raise SystemExit(f"{fichero}: 'puerto' de {nombre} debe ser un entero (p. ej. 30001)")
-        pos = r["posicion"]
-        if not isinstance(pos, list) or len(pos) != 6 or not all(es_numero(v) for v in pos):
-            raise SystemExit(f"{fichero}: 'posicion' de {nombre} debe ser "
-                             "[x, y, z, roll, pitch, yaw] (6 números)")
     return robots
 
 
@@ -245,7 +239,7 @@ def imprimir_estructura(tipo, mensaje):
 
 def main():
     config = cargar_robots()[0]                             # el primer robot de robots.json
-    print(f"Robot: {config['nombre']} ({config['host']}:{config['puerto']})")
+    print(f"Robot: {config['nombre']} ({config['host']}:{PUERTO})")
 
     robot = None
     if USAR_PYBULLET:
@@ -256,7 +250,7 @@ def main():
     try:
         while True:
             try:
-                conectar_y_visualizar(robot, config["host"], config["puerto"])
+                conectar_y_visualizar(robot, config["host"], PUERTO)
             except p.error:
                 raise                                       # la ventana no es la red: no reintentar
             except (OSError, ConnectionError, ValueError, struct.error) as e:

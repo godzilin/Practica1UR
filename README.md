@@ -74,17 +74,17 @@ en Linux sin un runtime Linux equivalente.
 Abrir la carpeta `Practica1UR` en VS Code (usa `venv` automáticamente por `.vscode/settings.json`),
 abrir el script, cambiar las constantes de `CONFIGURACIÓN` del principio y pulsar F5 o ▶.
 
-Los robots (nombre, IP, puerto, posición en la escena) se configuran en `visualizador/robots.json`,
+Los robots (nombre e IP) se configuran en `visualizador/robots.json`,
 sin tocar el código. `primaria.py`, `tiempo_real.py` y `test_conexion.py` usan el **primer** robot
 de la lista; para cambiar de robot (otra VM o un UR3e real) se pone el primero. `varios_robots.py`
-usa todos.
+usa todos, los conecta por el puerto 30001 y los separa automáticamente en la escena.
 
 - `visualizador/test_conexion.py`: lee versión, modo y q_actual; con `MOVER = True` gira la base y vuelve
 - `visualizador/primaria.py`: visualizador; `MODO` = `"angulos"` (A4/A5), `"bytes"` (A1) o `"mensajes"` (A2/A3)
 - `visualizador/tiempo_real.py`: visualizador a 500 Hz; `MODO` = `"angulos"` (B2–B4) o `"paquetes"` (B1); `FPS` de dibujo
 - `visualizador/ensenar_reproducir.py`: mini-aplicación Enseñar y reproducir; teclas con la ventana de PyBullet activa (Espacio, ← →, B, D, P, Enter, Esc, G/C, E, S)
 - `visualizador/prueba_robustez.py`: prueba sin robot; mete 20 000 mensajes rotos en el parser y `robots.json` erróneos (debe acabar en `TODO OK`)
-- `visualizador/varios_robots.py`: varios robots en la misma ventana; los robots se configuran en `visualizador/robots.json` (nombre, host, puerto, posición `[x, y, z, roll, pitch, yaw]`)
+- `visualizador/varios_robots.py`: varios robots en la misma ventana; los robots se configuran en `visualizador/robots.json` (nombre y host), y el script asigna el puerto 30001 y las posiciones
 
 ## Ruta rápida para entender el código
 
@@ -108,7 +108,8 @@ del bloque D están en [`docs/ensenar_reproducir.md`](docs/ensenar_reproducir.md
 
 ### Flujo de una ejecución
 
-`robots.json` aporta la IP y el puerto. El receptor TCP acumula bytes porque
+`robots.json` aporta la IP. Cada script selecciona el puerto de su interfaz
+(30001 para primaria y órdenes, 30003 para tiempo real). El receptor TCP acumula bytes porque
 `recv()` no conserva los límites de los mensajes; el parser usa la longitud de
 cada cabecera para reconstruirlos. Después se extraen los seis `q_actual`, se
 transforman al convenio de PyBullet y se dibuja el robot. Si la conexión cae,
@@ -133,7 +134,7 @@ respondiendo mientras la red espera datos.
 
 | Situación | Qué hace el programa |
 |---|---|
-| `robots.json` no existe, JSON mal escrito, falta un campo, puerto no numérico, nombre repetido | Termina con un mensaje que dice qué arreglar (sin traceback) |
+| `robots.json` no existe, JSON mal escrito, falta un campo, host vacío, nombre repetido | Termina con un mensaje que dice qué arreglar (sin traceback) |
 | El robot no responde, se reinicia URSim o se corta el cable | Reintenta cada 2 s; en el bloque C solo se congela ese robot (etiqueta "SIN DATOS") |
 | Llega un mensaje truncado, corrupto o con ángulos NaN | Se descarta (NaN) o se reconecta para realinear el buffer; nunca muere un hilo receptor |
 | Fallo inesperado dentro de un hilo receptor | Se avisa y se reconecta: el hilo no muere en silencio |

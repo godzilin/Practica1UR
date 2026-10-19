@@ -30,6 +30,8 @@ FPS = 30
 SIN_DATOS = 1.0
 ALTURA_ETIQUETA = 0.8
 ALTURA_MENU = 1.25
+PUERTO = 30001
+SEPARACION = 1.0
 
 
 class EscenaRobot:
@@ -224,6 +226,10 @@ def main():
     robots = cargar_robots()
     if len(robots) > 9:
         raise SystemExit("Este visualizador admite como maximo 9 robots (teclas 1..9)")
+    mitad = (len(robots) - 1) / 2
+    for indice, robot in enumerate(robots):
+        robot["puerto"] = PUERTO
+        robot["posicion"] = [(indice - mitad) * SEPARACION, 0.0, 0.0, 0.0, 0.0, 0.0]
 
     from UR3e_rg2.dynamic_ur3e import UR3eRG2
     escena = UR3eRG2()
