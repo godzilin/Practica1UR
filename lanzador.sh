@@ -30,6 +30,7 @@ while true; do
         '  4) Ensenar y reproducir' \
         '  5) Probar conexion' \
         '  6) Prueba de robustez' \
+        '  7) Configurar robots' \
         '  0) Salir' \
         '========================================'
     printf 'Elige una opcion: '
@@ -42,6 +43,7 @@ while true; do
         4) ejecutar ensenar_reproducir.py ;;
         5) ejecutar test_conexion.py ;;
         6) ejecutar prueba_robustez.py ;;
+        7) ejecutar configurar_robots.py ;;
         0) printf 'Hasta luego.\n'; exit 0 ;;
         *) printf '\nOpcion no valida. Pulsa Enter para continuar.'; read -r ;;
     esac

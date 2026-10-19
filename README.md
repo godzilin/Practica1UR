@@ -34,8 +34,10 @@ chmod +x instalador.sh
 El script descarga el repositorio, instala las dependencias y abre
 automáticamente un menú en la terminal. Desde ese menú se pueden iniciar
 `primaria.py`, `varios_robots.py`, `tiempo_real.py`, `ensenar_reproducir.py`,
-la prueba de conexión o la prueba de robustez. Si no hay `git`, usa `curl` o
-`wget` para descargar el repositorio. Para instalar sin abrir el menú se puede
+la prueba de conexión, la prueba de robustez o configurar los robots. La opción
+`7) Configurar robots` permite introducir desde la terminal el nombre, IP,
+puerto y posición de cada robot, sin editar `robots.json` a mano. Si no hay
+`git`, usa `curl` o `wget` para descargar el repositorio. Para instalar sin abrir el menú se puede
 usar `PRACTICA1UR_NO_INICIAR=1 ./instalador.sh`.
 
 Después de instalar, el menú se puede abrir de nuevo con:
