@@ -24,6 +24,18 @@ automáticamente mediante `uv`:
 bash -c "\$(curl -fsSL https://raw.githubusercontent.com/godzilin/Practica1UR/main/instalador.sh)"
 ```
 
+También se puede copiar únicamente `instalador.sh` a otro ordenador y ejecutar:
+
+```bash
+chmod +x instalador.sh
+./instalador.sh
+```
+
+El script descarga el repositorio, instala las dependencias y abre
+automáticamente `ensenar_reproducir.py`. Si no hay `git`, usa `curl` o `wget`
+para descargar el repositorio. Para instalar sin abrir el visualizador se puede
+usar `PRACTICA1UR_NO_INICIAR=1 ./instalador.sh`.
+
 El instalador clona el repositorio en `~/Practica1UR`, crea `.venv` e instala
 PyBullet, NumPy, Matplotlib, `python-docx` y la wheel `ur3e_rg2`. Para usar otra
 carpeta, por ejemplo una ruta compartida, se puede ejecutar:

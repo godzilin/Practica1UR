@@ -16,6 +16,24 @@ comando_requerido() {
     command -v "$1" >/dev/null 2>&1 || error "No se encuentra '$1'. Instálalo y vuelve a ejecutar este script."
 }
 
+descargar_repositorio() {
+    local temporal
+    temporal="$(mktemp -d)"
+    trap 'rm -rf "$temporal"' EXIT
+
+    if command -v curl >/dev/null 2>&1; then
+        curl -fL "$REPOSITORIO/archive/refs/heads/main.tar.gz" -o "$temporal/proyecto.tar.gz"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q "$REPOSITORIO/archive/refs/heads/main.tar.gz" -O "$temporal/proyecto.tar.gz"
+    else
+        error "Necesitas git, o curl/wget para descargar el repositorio."
+    fi
+
+    command -v tar >/dev/null 2>&1 || error "No se encuentra 'tar', necesario para extraer el repositorio."
+    mkdir -p "$DESTINO"
+    tar -xzf "$temporal/proyecto.tar.gz" --strip-components=1 -C "$DESTINO"
+}
+
 instalar_uv() {
     if command -v uv >/dev/null 2>&1; then
         return
@@ -35,16 +53,16 @@ instalar_uv() {
 
 printf 'Instalando %s en %s\n' "$NOMBRE_PROYECTO" "$DESTINO"
 
-comando_requerido git
-
 if [ -e "$DESTINO" ] && [ ! -d "$DESTINO/.git" ]; then
     error "El destino '$DESTINO' ya existe y no es un clon de Practica1UR. Usa PRACTICA1UR_DIR para elegir otra carpeta."
 fi
 
 if [ -d "$DESTINO/.git" ]; then
     printf 'Repositorio ya existente; se conservan tus cambios locales.\n'
-else
+elif command -v git >/dev/null 2>&1; then
     git clone "$REPOSITORIO" "$DESTINO"
+else
+    descargar_repositorio
 fi
 
 cd "$DESTINO"
@@ -83,3 +101,10 @@ printf '\nInstalación terminada.\n'
 printf 'Para activar el entorno: source %s/.venv/bin/activate\n' "$DESTINO"
 printf 'Para probar la conexión: %s visualizador/test_conexion.py\n' "$PYTHON"
 printf 'Para abrir el visualizador: %s visualizador/ensenar_reproducir.py\n' "$PYTHON"
+
+if [ "${PRACTICA1UR_NO_INICIAR:-0}" = "1" ]; then
+    exit 0
+fi
+
+printf '\nIniciando el visualizador...\n'
+exec "$PYTHON" visualizador/ensenar_reproducir.py
