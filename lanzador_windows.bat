@@ -4,7 +4,7 @@ setlocal EnableExtensions
 set "BASE=%~dp0"
 set "PYTHON=%BASE%.venv\Scripts\python.exe"
 
-call :preparar_entorno
+call :comprobar_entorno
 if errorlevel 1 exit /b 1
 
 :menu
@@ -44,47 +44,21 @@ echo Se ha abierto una ventana nueva para %SCRIPT%.
 pause
 exit /b 0
 
-:preparar_entorno
-if exist "%PYTHON%" if exist "%BASE%.venv\.preparado" exit /b 0
-
+:comprobar_entorno
 if not exist "%PYTHON%" (
-    where py >nul 2>&1
-    if not errorlevel 1 (
-        py -3 -m venv "%BASE%.venv"
-        if errorlevel 1 goto error_entorno
-        goto instalar_dependencias
-    )
-
-    where python >nul 2>&1
-    if not errorlevel 1 (
-        python -m venv "%BASE%.venv"
-        if errorlevel 1 goto error_entorno
-        goto instalar_dependencias
-    )
-
-    echo No se encuentra Python instalado en Windows.
-    echo Instala Python 3 desde https://www.python.org/downloads/windows/ y vuelve a ejecutar este archivo.
+    echo No se encuentra el entorno virtual en:
+    echo   %BASE%.venv
+    echo Ejecuta preparar_windows.bat una vez en este ordenador.
     pause
     exit /b 1
 )
 
-:instalar_dependencias
-echo Preparando el entorno Python. La primera vez se instalaran las librerias...
-"%PYTHON%" -m pip install --upgrade pip
-if errorlevel 1 goto error_dependencias
-"%PYTHON%" -m pip install pybullet numpy matplotlib python-docx "%BASE%material\ur3e_rg2-0.1.0-py3-none-any.whl"
-if errorlevel 1 goto error_dependencias
-type nul > "%BASE%.venv\.preparado"
-echo Entorno preparado correctamente.
+"%PYTHON%" "%BASE%comprobar_dependencias.py"
+if errorlevel 1 (
+    echo.
+    echo El entorno existe, pero no contiene todas las librerias.
+    echo Ejecuta preparar_windows.bat para instalarlo o repararlo.
+    pause
+    exit /b 1
+)
 exit /b 0
-
-:error_entorno
-echo No se pudo crear el entorno virtual.
-pause
-exit /b 1
-
-:error_dependencias
-echo No se pudieron instalar las librerias.
-echo Comprueba la conexion a Internet y vuelve a ejecutar este archivo.
-pause
-exit /b 1

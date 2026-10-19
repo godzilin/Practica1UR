@@ -10,81 +10,45 @@
 | `antiguos/` | Pruebas anteriores (práctica 0, lectura de dos robots, túnel) |
 | `docs/` | Documentos de diseño y guiones de defensa |
 | `memoria/` | Entrega escrita: `memoria.docx/.pdf` (3 páginas) y `preguntas.docx/.pdf` (apartado 12). `figuras.py` dibuja las figuras con los datos medidos de `datos/` y `generar_memoria.py` crea los documentos (necesitan `matplotlib` y `python-docx`) |
-| `venv/` | Entorno Python 3.13 con `ur3e_rg2`, `pybullet` y `numpy` |
+| `.venv/` | Entorno virtual local de Windows, no se publica en Git |
 
 ## Entorno
 
-### Instalación automática
+### Linux y macOS
 
-En Linux o macOS, con `git` y `curl` o `wget`, se puede instalar todo desde
-GitHub ejecutando. Si Python 3 no está instalado, el instalador lo descarga
-automáticamente mediante `uv`:
-
-```bash
-bash -c "\$(curl -fsSL https://raw.githubusercontent.com/godzilin/Practica1UR/main/instalador.sh)"
-```
-
-También se puede copiar únicamente `instalador.sh` a otro ordenador y ejecutar:
+Instala Python 3.11 y las dependencias del proyecto en un entorno virtual. El
+lanzador disponible para estos sistemas es `lanzador.sh`.
 
 ```bash
-chmod +x instalador.sh
-./instalador.sh
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install pybullet pybullet-planning numpy matplotlib python-docx
+python -m pip install --no-deps material/ur3e_rg2-0.1.0-py3-none-any.whl
+./lanzador.sh
 ```
-
-El script descarga el repositorio, instala las dependencias y abre
-automáticamente un menú en la terminal. Desde ese menú se pueden iniciar
-`primaria.py`, `varios_robots.py`, `tiempo_real.py`, `ensenar_reproducir.py`,
-la prueba de conexión, la prueba de robustez o configurar los robots. La opción
-`7) Configurar robots` permite introducir desde la terminal el nombre, IP,
-puerto y posición de cada robot, sin editar `robots.json` a mano. Si no hay
-`git`, usa `curl` o `wget` para descargar el repositorio. Para instalar sin abrir el menú se puede
-usar `PRACTICA1UR_NO_INICIAR=1 ./instalador.sh`.
-
-Después de instalar, el menú se puede abrir de nuevo con:
-
-```bash
-~/Practica1UR/lanzador.sh
-```
-
-Cada opción del menú abre una terminal nueva donde se muestran únicamente las
-salidas del script elegido. La terminal del menú permanece disponible para
-lanzar otro script.
 
 ### Windows
 
-Después de tener el repositorio instalado, haz doble clic en
-`lanzador_windows.bat` o ejecútalo desde CMD:
+En cada ordenador Windows, prepara el entorno una sola vez haciendo doble clic en
+`preparar_windows.bat`. Este paso crea `.venv` e instala desde Internet las
+dependencias y la wheel incluida en `material/`. Necesita Python 3.11, porque
+es la versión compatible con PyBullet en este proyecto.
+
+Una vez preparado, haz doble clic en `lanzador_windows.bat` o ejecútalo desde CMD:
 
 ```bat
 lanzador_windows.bat
 ```
 
 El menú de Windows ofrece las mismas opciones que `lanzador.sh` y abre cada
-programa en una ventana CMD independiente. El BAT no descarga Python ni el
-repositorio: necesita que Python 3 ya esté instalado y crea `.venv` localmente.
-La primera vez usa `pip` para instalar las librerías del proyecto.
+programa en una ventana CMD independiente. El lanzador no crea entornos ni usa
+`pip`: comprueba offline que `.venv` contiene `pybullet`, `UR3e_rg2`, `numpy`,
+`matplotlib` y `python-docx`; si falta algo, muestra el paquete y termina.
 
-El instalador clona el repositorio en `~/Practica1UR`, crea `.venv` e instala
-PyBullet, NumPy, Matplotlib, `python-docx` y la wheel `ur3e_rg2`. Para usar otra
-carpeta, por ejemplo una ruta compartida, se puede ejecutar:
-
-```bash
-PRACTICA1UR_DIR="$HOME/mi-practica" bash instalador.sh
-```
-
-Después se puede ejecutar directamente un programa con
-`~/Practica1UR/.venv/bin/python visualizador/test_conexion.py`.
-
-```
-source venv/bin/activate.fish      # fish; en bash: source venv/bin/activate
-```
-
-Recrearlo desde cero:
-
-```
-uv venv --python 3.13 venv
-uv pip install --python venv/bin/python material/ur3e_rg2-0.1.0-py3-none-any.whl
-```
+El entorno virtual no se puede copiar de forma fiable entre ordenadores porque
+contiene rutas y binarios específicos de Windows y de la versión de Python.
+Por eso cada equipo debe ejecutar `preparar_windows.bat` una vez; después el
+lanzador funciona sin conexión y solo comprueba las librerías.
 
 ## Red
 
