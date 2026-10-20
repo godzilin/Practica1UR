@@ -156,8 +156,9 @@ puntos y esta ayuda. La consola guarda el registro detallado.
 ### Variante multi-robot
 
 En la versión multi-robot, `1..9` cambia el robot activo y `A` inicia todas las
-secuencias que tengan puntos cargados. Cambiar de robot no envía `stopj` al
-robot anterior: cada máquina de estados continúa de forma independiente.
+secuencias que tengan puntos cargados. `L` activa o desactiva el bucle solo para
+el robot activo. Cambiar de robot no envía `stopj` al robot anterior: cada
+máquina de estados y cada bucle continúan de forma independiente.
 Los deslizadores se muestran para el fantasma del robot activo, mientras que
 los robots opacos siguen sus estados reales. La ventana muestra el estado
 detallado solo del robot activo para evitar etiquetas duplicadas o solapadas.

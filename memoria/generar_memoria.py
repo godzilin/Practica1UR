@@ -102,7 +102,11 @@ def texto_rico(parrafo, texto, tam=None):
 
 
 class Documento:
-    """Un .docx con el encabezado (logo, autor) y el pie (Página X de Y) de la entrega."""
+    """Generador de documentos Word con el formato comun de la entrega.
+
+    Centraliza estilos, encabezado, pie, figuras, tablas y texto enriquecido
+    para que ``memoria.docx`` y ``preguntas.docx`` se construyan igual.
+    """
 
     def __init__(self, tam=11):
         # Cada documento comparte márgenes, tipografía, encabezado y pie para
@@ -143,6 +147,7 @@ class Documento:
             r.font.size, r.font.color.rgb = Pt(9), GRIS
 
     def titulo(self, texto, subtitulo):
+        """Añade el titulo principal y su subtitulo."""
         p = self.doc.add_paragraph()
         p.paragraph_format.space_after = Pt(0)
         r = p.add_run(texto)
@@ -153,6 +158,7 @@ class Documento:
         r.font.size, r.font.color.rgb = Pt(11), GRIS
 
     def seccion(self, texto):
+        """Añade un encabezado de seccion que permanece junto al parrafo siguiente."""
         p = self.doc.add_paragraph()
         p.paragraph_format.space_before = Pt(10)
         p.paragraph_format.space_after = Pt(3)
@@ -161,16 +167,19 @@ class Documento:
         r.bold, r.font.size, r.font.color.rgb = True, Pt(14), AZUL
 
     def parrafo(self, texto, tam=None):
+        """Añade un parrafo admitiendo negrita y fragmentos de codigo."""
         p = self.doc.add_paragraph()
         texto_rico(p, texto, tam)
         return p
 
     def punto(self, texto):
+        """Añade un elemento de lista con el mismo formato enriquecido."""
         p = self.doc.add_paragraph(style="List Bullet")
         p.paragraph_format.space_after = Pt(2)
         texto_rico(p, texto)
 
     def figura(self, nombre, ancho_cm, pie=None):
+        """Inserta una figura centrada y, opcionalmente, su pie."""
         # El pie se mantiene junto a la figura para que Word no los separe.
         p = self.doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -204,6 +213,7 @@ class Documento:
         self.doc.add_paragraph().paragraph_format.space_after = Pt(0)
 
     def tabla(self, filas, anchos):
+        """Inserta una tabla y aplica un estilo azul a su primera fila."""
         # La primera fila se trata como cabecera; las demás son datos normales.
         t = self.doc.add_table(rows=len(filas), cols=len(filas[0]))
         t.style = "Table Grid"
@@ -223,6 +233,7 @@ class Documento:
         self.doc.add_paragraph().paragraph_format.space_after = Pt(0)
 
     def guardar(self, nombre):
+        """Escribe el documento en la carpeta de memoria."""
         # Las rutas de salida son relativas a memoria/, nunca al directorio actual.
         self.doc.save(CARPETA / nombre)
         print("Guardado", CARPETA / nombre)

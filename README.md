@@ -83,7 +83,7 @@ usa todos, los conecta por el puerto 30001 y los separa automáticamente en la e
 - `visualizador/primaria.py`: visualizador; `MODO` = `"angulos"` (A4/A5), `"bytes"` (A1) o `"mensajes"` (A2/A3)
 - `visualizador/tiempo_real.py`: visualizador a 500 Hz; `MODO` = `"angulos"` (B2–B4) o `"paquetes"` (B1); `FPS` de dibujo
 - `visualizador/ensenar_reproducir.py`: mini-aplicación Enseñar y reproducir; teclas con la ventana de PyBullet activa (Espacio, ← →, B, D, P, Enter, Esc, G/C, E, S)
-- `visualizador/ensenar_reproducir_varios.py`: versión multi-robot; selecciona con `1..9`, enseña/reproduce el seleccionado y pulsa `A` para ejecutar todas las secuencias coordinadamente. Cambiar de selección no detiene los demás robots; los deslizadores actúan sobre el fantasma del robot activo
+- `visualizador/ensenar_reproducir_varios.py`: versión multi-robot; selecciona con `1..9`, enseña/reproduce el seleccionado y pulsa `A` para ejecutar todas las secuencias coordinadamente. El bucle `L` se configura por robot; cambiar de selección no detiene los demás robots y los deslizadores actúan sobre el fantasma del robot activo
 - `visualizador/prueba_robustez.py`: prueba sin robot; mete 20 000 mensajes rotos en el parser y `robots.json` erróneos (debe acabar en `TODO OK`)
 - `visualizador/varios_robots.py`: varios robots en la misma ventana; los robots se configuran en `visualizador/robots.json` (nombre y host), y el script asigna el puerto 30001 y las posiciones
 

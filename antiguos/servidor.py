@@ -15,10 +15,12 @@ class Dato():
     altura: float
 
     def codificar(self) -> bytes:
+        """Convierte el registro en bytes para enviarlo al cliente."""
         # Cliente y servidor deben coincidir en tipos y orden de bytes.
         return struct.pack(">BId",self.edad,self.dni,self.altura)
 
     def decodificar(self, trama: bytes) -> Dato:
+        """Interpreta los bytes recibidos usando exactamente el formato del cliente."""
         # Una trama con longitud incorrecta produce struct.error.
         datos_decodificados = struct.unpack(">BId",trama)
         return Dato(edad=datos_decodificados[0],dni=datos_decodificados[1],altura=datos_decodificados[2])

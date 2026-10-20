@@ -32,6 +32,10 @@ PUERTO = 30001                    # interfaz primaria
 #   "mensajes" -> A2/A3: longitud y tipo de cada mensaje, y sus subpaquetes
 MODO = "angulos"
 
+# Unidad usada solo al imprimir ángulos. Los datos recibidos, PyBullet y movej
+# siguen trabajando siempre en radianes.
+UNIDAD_ANGULOS = "grados"       # "grados" o "radianes"
+
 USAR_PYBULLET = True        # False: no abre la ventana (útil para probar solo la red)
 
 # Convenio de ángulos robot -> PyBullet. Si en la ventana alguna articulación sale
@@ -185,9 +189,29 @@ def mostrar_mensaje_robot(mensaje):
         print(describir_error(mensaje))
 
 
+def formatear_angulos(q):
+    """Convierte una lista de radianes al texto de la unidad configurada."""
+    if UNIDAD_ANGULOS == "grados":
+        valores = (f"{math.degrees(v):7.2f}" for v in q)
+    elif UNIDAD_ANGULOS == "radianes":
+        valores = (f"{v:8.4f}" for v in q)
+    else:
+        raise ValueError("UNIDAD_ANGULOS debe ser 'grados' o 'radianes'")
+    return "[" + ", ".join(valores) + "]"
+
+
+def unidad_angulos():
+    """Devuelve la etiqueta de la unidad configurada para mostrar ángulos."""
+    if UNIDAD_ANGULOS == "grados":
+        return "°"
+    if UNIDAD_ANGULOS == "radianes":
+        return "rad"
+    raise ValueError("UNIDAD_ANGULOS debe ser 'grados' o 'radianes'")
+
+
 def grados(q):
-    """Lista de radianes -> texto en grados, para imprimir."""
-    return "[" + ", ".join(f"{math.degrees(v):7.2f}" for v in q) + "]"
+    """Compatibilidad: formatea los radianes con la unidad configurada."""
+    return formatear_angulos(q)
 
 
 def conectar_y_visualizar(robot, host, puerto):
@@ -221,7 +245,7 @@ def conectar_y_visualizar(robot, host, puerto):
                         q_pybullet = [s * v + o for s, v, o in zip(SIGNOS, q, OFFSETS)]
                         robot.move_robot(0, q_pybullet)
                     if MODO == "angulos" and time.monotonic() - ultimo_print >= 1:
-                        print(f"q_actual (°): {grados(q)}")
+                        print(f"q_actual ({unidad_angulos()}): {formatear_angulos(q)}")
                         ultimo_print = time.monotonic()
                 # El resto de tipos no nos interesan: se ignoran
 

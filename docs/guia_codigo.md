@@ -19,8 +19,8 @@ separación clara entre protocolo, conexión, simulación y lógica de aplicaci�
    teclado, secuencias, fantasma, errores y máquina de estados.
 7. `visualizador/ensenar_reproducir_varios.py`: reutiliza esa máquina de estados
    por robot y permite ejecutar las secuencias de todos los robots a la vez con `A`.
-   Las teclas `1..9` cambian el robot activo sin detener los demás; los
-   deslizadores se aplican al fantasma del robot seleccionado.
+   Las teclas `1..9` cambian el robot activo sin detener los demás; `L` activa
+   el bucle solo para el robot activo y los deslizadores se aplican a su fantasma.
 
 Los ficheros de `antiguos/` son ejemplos previos de aprendizaje. `memoria/`
 contiene scripts de generación de documentos y figuras, no código necesario

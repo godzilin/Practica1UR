@@ -19,7 +19,8 @@ import time
 
 import pybullet as p
 
-from primaria import cargar_robots, grados, SIGNOS, OFFSETS    # el convenio se ajusta en primaria.py
+from primaria import (cargar_robots, formatear_angulos, unidad_angulos,
+                      SIGNOS, OFFSETS)                         # convenio en primaria.py
 
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
@@ -105,7 +106,8 @@ def conectar_y_visualizar(robot, host):
                 # Si no da abasto, se acumulan en el buffer del sistema operativo y
                 # cada recv() trae muchos de golpe: el robot de la pantalla iría con retraso.
                 print(f"{paquetes / (ahora - ultimo_print):5.0f} paquetes/s  "
-                      f"máx {max_por_recv:3d} por recv()  q_actual (°): {grados(q)}")
+                      f"máx {max_por_recv:3d} por recv()  "
+                      f"q_actual ({unidad_angulos()}): {formatear_angulos(q)}")
                 paquetes = max_por_recv = 0
                 ultimo_print = ahora
 

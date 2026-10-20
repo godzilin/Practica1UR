@@ -161,10 +161,14 @@ def ruta_documento(ruta):
 
 
 class Handler(BaseHTTPRequestHandler):
+    """Implementa las rutas HTTP del panel local y sus respuestas JSON."""
+
     def log_message(self, formato, *args):
+        """Silencia el log automatico para no mezclarlo con la salida del panel."""
         pass
 
     def responder(self, datos, codigo=200):
+        """Serializa un objeto Python como respuesta JSON UTF-8."""
         cuerpo = json.dumps(datos, ensure_ascii=False).encode("utf-8")
         self.send_response(codigo)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -173,10 +177,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(cuerpo)
 
     def recibir_json(self):
+        """Lee el cuerpo de una peticion y lo convierte desde JSON."""
         longitud = int(self.headers.get("Content-Length", "0"))
         return json.loads(self.rfile.read(longitud))
 
     def do_GET(self):
+        """Sirve la interfaz, la documentacion y las consultas de solo lectura."""
         ruta = urlparse(self.path).path
         try:
             if ruta == "/api/programas":
@@ -226,6 +232,7 @@ class Handler(BaseHTTPRequestHandler):
             self.responder({"error": str(error)}, 500)
 
     def do_POST(self):
+        """Procesa ordenes para iniciar, detener o configurar programas y robots."""
         ruta = urlparse(self.path).path
         try:
             datos = self.recibir_json()

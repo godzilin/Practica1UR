@@ -15,10 +15,12 @@ class Dato():
     altura: float
 
     def codificar(self) -> bytes:
+        """Convierte el registro Python en la trama binaria del protocolo."""
         # > fija big-endian; B, I y d fijan el contrato exacto de bytes.
         return struct.pack(">BId",self.edad,self.dni,self.altura)
 
     def decodificar(self, trama: bytes) -> Dato:
+        """Reconstruye un registro a partir de una trama con el formato acordado."""
         # unpack aplica el mismo contrato en sentido inverso.
         datos_decodificados = struct.unpack(">BId",trama)
         return Dato(edad=datos_decodificados[0],dni=datos_decodificados[1],altura=datos_decodificados[2])

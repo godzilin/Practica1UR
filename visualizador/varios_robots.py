@@ -23,7 +23,8 @@ import time
 
 import pybullet as p
 
-from primaria import cargar_robots, cortar_mensajes, leer_estado, grados, SIGNOS, OFFSETS, MSG_ESTADO
+from primaria import (cargar_robots, cortar_mensajes, leer_estado, formatear_angulos,
+                      unidad_angulos, SIGNOS, OFFSETS, MSG_ESTADO)
 
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
@@ -136,7 +137,8 @@ def main():
             if ahora - ultimo_print >= 1:
                 for r in robots:
                     if r["conectado"]:
-                        print(f"[{r['nombre']}] q_actual (°): {grados(r['q'])}")
+                        print(f"[{r['nombre']}] q_actual ({unidad_angulos()}): "
+                            f"{formatear_angulos(r['q'])}")
                 ultimo_print = ahora
 
             siguiente += 1 / FPS                            # ritmo fijo sin acumular deriva

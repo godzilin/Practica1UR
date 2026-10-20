@@ -35,8 +35,9 @@ from pathlib import Path
 
 import pybullet as p
 
-from primaria import (cargar_robots, cortar_mensajes, leer_estado, describir_error, grados,
-                      es_numero, SIGNOS, OFFSETS, MSG_ESTADO, MSG_ROBOT, MODOS_ROBOT)
+from primaria import (cargar_robots, cortar_mensajes, leer_estado, describir_error,
+                      formatear_angulos, unidad_angulos, es_numero, SIGNOS, OFFSETS,
+                      MSG_ESTADO, MSG_ROBOT, MODOS_ROBOT)
 
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
@@ -308,7 +309,8 @@ class Aplicacion:
                 self.puntos.insert(self.sel + 1 if self.puntos else 0, list(estado["q"]))
                 self.sel = self.sel + 1 if len(self.puntos) > 1 else 0
                 self.ver_deslizadores = False
-                self.avisar(f"Punto {self.sel + 1} guardado: {grados(estado['q'])}")
+                self.avisar(f"Punto {self.sel + 1} guardado ({unidad_angulos()}): "
+                            f"{formatear_angulos(estado['q'])}")
         elif t == ord("d"):
             q = self.leer_deslizadores()
             if not self.deslizadores_listos:
@@ -317,11 +319,13 @@ class Aplicacion:
                 self.puntos.insert(self.sel + 1 if self.puntos else 0, q)
                 self.sel = self.sel + 1 if len(self.puntos) > 1 else 0
                 self.ver_deslizadores = False
-                self.avisar(f"Punto {self.sel + 1} añadido desde los deslizadores: {grados(q)}")
+                self.avisar(f"Punto {self.sel + 1} añadido desde los deslizadores "
+                            f"({unidad_angulos()}): {formatear_angulos(q)}")
         elif t in (IZQUIERDA, DERECHA) and self.puntos:
             self.sel = max(0, min(len(self.puntos) - 1, self.sel + (1 if t == DERECHA else -1)))
             self.ver_deslizadores = False
-            self.avisar(f"Punto {self.sel + 1}/{len(self.puntos)}: {grados(self.puntos[self.sel])}")
+            self.avisar(f"Punto {self.sel + 1}/{len(self.puntos)} ({unidad_angulos()}): "
+                        f"{formatear_angulos(self.puntos[self.sel])}")
         elif t in BORRAR and self.puntos:
             self.puntos.pop(self.sel)
             self.sel = max(0, min(self.sel, len(self.puntos) - 1))

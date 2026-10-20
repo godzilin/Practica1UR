@@ -14,7 +14,8 @@ import socket
 import struct
 import time
 
-from primaria import cargar_robots, cortar_mensajes, leer_estado, mostrar_mensaje_robot, grados, MODOS_ROBOT
+from primaria import (cargar_robots, cortar_mensajes, leer_estado, mostrar_mensaje_robot,
+                      formatear_angulos, unidad_angulos, MODOS_ROBOT)
 
 # =====================================================================
 # CONFIGURACIÓN · cambia aquí lo que necesites
@@ -96,7 +97,8 @@ def mover(sock, lector, objetivo, timeout=15):
             return False
 
     error = max(abs(a - b) for a, b in zip(estado["q"], objetivo))
-    print(f"Fin. q = {grados(estado['q'])}  error máx {error:.4f} rad")
+    print(f"Fin. q ({unidad_angulos()}) = {formatear_angulos(estado['q'])}  "
+          f"error máx {error:.4f} rad")
     return error < TOLERANCIA
 
 
@@ -121,7 +123,7 @@ def main():
         print(f"Modo: {MODOS_ROBOT.get(estado['modo_robot'], estado['modo_robot'])}  "
               f"programa: {estado['programa_en_marcha']}  "
               f"parada protección: {estado['parada_proteccion']}")
-        print(f"q_actual (°): {grados(estado['q'])}")
+        print(f"q_actual ({unidad_angulos()}): {formatear_angulos(estado['q'])}")
 
         if not MOVER:
             return
