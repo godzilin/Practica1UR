@@ -4,3 +4,4 @@ python/
 __pycache__/
 *.pyc
 *.bak
+visualizador/secuencias/secuencia_*.json

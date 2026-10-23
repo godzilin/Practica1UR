@@ -1,4 +1,13 @@
-"""Panel web local para lanzar los visualizadores sin depender del sistema operativo."""
+"""Panel web local para lanzar los visualizadores sin depender del sistema operativo.
+
+La web se creó con Python usando solo la biblioteca estándar: este archivo levanta
+un servidor HTTP local con ``ThreadingHTTPServer`` y actúa como backend, mientras
+que ``web/index.html``, ``web/app.js`` y ``web/app.css`` forman la interfaz del
+navegador. El JavaScript consulta y modifica los robots mediante rutas HTTP que
+intercambian datos JSON; Python valida esa configuración y lanza los visualizadores
+como procesos independientes con ``subprocess``, guardando sus salidas para
+mostrarlas en el panel.
+"""
 
 import json
 import os
