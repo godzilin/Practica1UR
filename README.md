@@ -100,9 +100,9 @@ En el robot real, las órdenes van como máximo a 0,3 rad/s y 0,5 rad/s². `V` y
 
 `panel_web.py` (F5 o `python entrega/panel_web.py`) abre el navegador con una página que permite:
 
-- editar `robots.json` (para borrar un robot se vacía su nombre; para añadir uno se rellena la última fila);
+- editar `robots.json`, tal cual, en un cuadro de texto (solo se guarda si es JSON válido);
 - iniciar y detener cada script;
-- ver lo que escribe cada script en la consola, actualizado cada segundo.
+- ver lo que escriben los scripts en la consola, actualizado cada segundo, con lo más nuevo arriba y el nombre del script delante de cada línea.
 
 **Salir** detiene los scripts en marcha y cierra el panel.
 
@@ -230,7 +230,7 @@ Probado el 2026-11-02 contra URSim 5.25 (`10.172.18.73`):
 - `varios_robots.py`: un URSim en verde moviéndose y otro apagado (`10.172.18.67`) en rojo «SIN DATOS», sin frenar al primero.
 - `ensenar_reproducir.py`, con teclas reales en la ventana: cargar, previsualizar, ejecutar 4 puntos, provocar una parada con E (`C209A0`), reanudar con Enter y terminar la secuencia. Ctrl+C a mitad de un movimiento envía `stopj` y el robot se para.
 - Reconexión de `primaria.py` y `tiempo_real.py` con un robot falso que corta la conexión, que se cuelga sin enviar nada (timeout a los 5 s) y que rechaza la conexión.
-- `panel_web.py`: guardar robots (y rechazar una fila mal escrita), iniciar, ver la salida y detener los cuatro scripts con un final limpio (`Fin`, código 0).
+- `panel_web.py`: guardar robots (y rechazar un JSON mal escrito), iniciar, ver la salida y detener los cuatro scripts con un final limpio (`Fin`, código 0).
 
 ## Decisiones y por qué
 
@@ -244,7 +244,7 @@ Probado el 2026-11-02 contra URSim 5.25 (`10.172.18.73`):
 - **El fantasma de `ensenar_reproducir.py` es un segundo UR3e en la misma base, azul y semitransparente.** Muestra el punto al que va el robot, o recorre la secuencia en la previsualización.
 - **Textos fijos encima del robot.** PyBullet solo sabe escribir texto en el espacio 3D. Ponerlo en una posición fija es lo más sencillo, y la cámara empieza enfocada a esa zona. Se quitan las tildes porque PyBullet corta el texto en la primera letra no ASCII.
 - **Las órdenes se envían por el mismo socket del que se lee**, como recomienda el enunciado. Una segunda conexión obligaría a leer y tirar todo lo que el robot envía por ella.
-- **Panel web sin JavaScript**, como el del cliente Modbus. Es un formulario HTML. La salida está en un marco que se recarga solo. No sabe nada de robots: lanza cada script en un proceso aparte, como desde una terminal.
+- **Panel web sin JavaScript**, como el del cliente Modbus. Es un formulario HTML, y todos los botones van a la misma dirección: el botón pulsado llega como un campo más. Los robots se editan como el propio texto de `robots.json`, sin traducir de tabla a JSON. La salida está en un marco que se recarga solo. No sabe nada de robots: lanza cada script en un proceso aparte, como desde una terminal.
 - **Detener desde el panel manda Ctrl+C (SIGINT) en Linux**, para que el script termine como en la terminal y `ensenar_reproducir.py` pare el robot. Windows no permite mandar Ctrl+C a otro proceso, así que allí se termina sin más (ver límites).
 
 ## Límites conocidos

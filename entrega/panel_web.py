@@ -8,7 +8,8 @@ página muestra lo que escribe en la consola.
 1. Arranca un servidor web en 127.0.0.1 (solo se puede usar desde este PC), en un
    puerto libre que elige el sistema, y abre el navegador.
 2. La página es un formulario HTML normal, sin JavaScript. Cada botón manda un POST.
-3. La salida de los scripts se ve en un marco que se recarga solo cada segundo.
+3. La salida de los scripts se ve en un marco que se recarga solo cada segundo,
+   con lo más nuevo arriba.
 4. Salir detiene los scripts en marcha y apaga el servidor.
 
 Cómo usarlo: pulsa F5 en VS Code (o ejecuta python panel_web.py).
@@ -35,68 +36,33 @@ EMPAQUETADO = getattr(sys, "frozen", False)
 CARPETA = Path(sys.executable).parent if EMPAQUETADO else Path(__file__).parent
 ROBOTS = CARPETA / "robots.json"
 SCRIPTS = ["primaria.py", "tiempo_real.py", "varios_robots.py", "ensenar_reproducir.py"]
-LINEAS = 40                          # líneas de salida que se muestran de cada script
 
-procesos = {}                        # script -> (proceso, últimas líneas que ha escrito)
-
-
-def leer_robots():
-    """Los robots de robots.json, o una lista vacía si no se puede leer."""
-    try:
-        return json.loads(ROBOTS.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return []
+procesos = {}                  # script -> su proceso
+salida = deque(maxlen=200)     # últimas líneas de todos los scripts, con el nombre delante
 
 
-def guardar_robots(campos):
-    """Convierte las filas del formulario en robots.json. Devuelve el mensaje para la página.
-
-    Cada fila trae nombre, host y posición ("x y z"). Una fila sin nombre se ignora:
-    así se borra un robot (vaciando su nombre) o se añade uno (rellenando la fila vacía).
-    """
-    robots = []
-    for nombre, host, posicion in zip(campos["nombre"], campos["host"], campos["posicion"]):
-        if not nombre.strip():
-            continue
-        try:
-            xyz = [float(v) for v in posicion.replace(",", " ").split()]
-        except ValueError:
-            xyz = []
-        if not host.strip() or len(xyz) != 3:
-            return f"No se ha guardado: {nombre} necesita una IP y una posición con 3 números"
-        robots.append({"nombre": nombre.strip(), "host": host.strip(), "posicion": xyz})
-    if not robots:
-        return "No se ha guardado: tiene que haber al menos un robot"
-    # Un robot por línea, para que el fichero se lea a simple vista
-    ROBOTS.write_text("[\n" + ",\n".join("    " + json.dumps(r, ensure_ascii=False) for r in robots)
-                      + "\n]\n", encoding="utf-8")
-    return f"Guardados {len(robots)} robots. Los scripts en marcha no cambian hasta relanzarlos"
-
-
-def leer_salida(proceso, lineas):
-    """Hilo: guarda lo que escribe el script, línea a línea (deque se queda con las últimas)."""
+def leer_salida(script, proceso):
+    """Hilo: guarda cada línea que escribe el script (deque olvida las más viejas)."""
     for linea in proceso.stdout:
-        lineas.append(linea.rstrip())
+        salida.append(f"[{script}] {linea.rstrip()}")
 
 
 def iniciar(script):
-    if script in procesos and procesos[script][0].poll() is None:
+    if script in procesos and procesos[script].poll() is None:
         return f"{script} ya está en marcha"
     # -u: sin buffer, para que cada print llegue en el momento. Empaquetado, el ejecutable
     # se llama a sí mismo con el script y hace de python (ver el final del fichero)
     orden = [sys.executable, script] if EMPAQUETADO else [sys.executable, "-u", script]
-    proceso = subprocess.Popen(orden, cwd=CARPETA,
-                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                               text=True, encoding="utf-8", errors="replace",
-                               env={**os.environ, "PYTHONIOENCODING": "utf-8"})
-    lineas = deque(maxlen=LINEAS)
-    procesos[script] = (proceso, lineas)
-    threading.Thread(target=leer_salida, args=(proceso, lineas), daemon=True).start()
+    procesos[script] = subprocess.Popen(orden, cwd=CARPETA,
+                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                        text=True, encoding="utf-8", errors="replace",
+                                        env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+    threading.Thread(target=leer_salida, args=(script, procesos[script]), daemon=True).start()
     return f"{script} iniciado"
 
 
 def detener(script):
-    proceso = procesos[script][0] if script in procesos else None
+    proceso = procesos.get(script)
     if proceso is None or proceso.poll() is not None:
         return f"{script} no está en marcha"
     # En Linux se manda Ctrl+C (SIGINT): el script acaba igual que desde la terminal, y
@@ -109,45 +75,44 @@ def detener(script):
     return f"{script} detenido"
 
 
+def guardar_robots(texto):
+    """Guarda en robots.json el texto del formulario, solo si es JSON válido."""
+    try:
+        json.loads(texto)
+    except ValueError as e:
+        return f"No se ha guardado: no es JSON válido ({e})"
+    ROBOTS.write_text(texto.replace("\r\n", "\n"), encoding="utf-8")   # el navegador manda \r\n
+    return "robots.json guardado. Los scripts en marcha no cambian hasta relanzarlos"
+
+
 def pagina(mensaje=""):
-    """La página principal: robots, scripts y salida."""
-    filas = "".join(
-        f'<tr><td><input name="nombre" value="{html.escape(str(r.get("nombre", "")))}"></td>'
-        f'<td><input name="host" value="{html.escape(str(r.get("host", "")))}"></td>'
-        f'<td><input name="posicion" value="{html.escape(" ".join(map(str, r.get("posicion", []))))}"></td></tr>'
-        for r in leer_robots() + [{}])                    # + una fila vacía para añadir un robot
-    botones = "".join(
-        f'<p><button name="script" value="{s}" formaction="/iniciar">Iniciar</button> '
-        f'<button name="script" value="{s}" formaction="/detener">Detener</button> {s}</p>'
-        for s in SCRIPTS)
+    """La página principal: scripts, robots y salida."""
+    botones = "".join(f'<p><button name="iniciar" value="{s}">Iniciar</button> '
+                      f'<button name="detener" value="{s}">Detener</button> {s}</p>' for s in SCRIPTS)
+    robots = ROBOTS.read_text(encoding="utf-8") if ROBOTS.exists() else "[]"
     return f"""<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><title>Visualizador UR3e</title></head><body>
 <h1>Visualizador UR3e</h1>
 <p><b>{html.escape(mensaje)}</b></p>
-<h2>Robots</h2>
-<p>Para borrar un robot, vacía su nombre. Para añadir uno, rellena la última fila.
-Los scripts de un solo robot usan el primero.</p>
-<form method="post" action="/robots"><table>
-<tr><th>Nombre</th><th>IP</th><th>Posición x y z (m)</th></tr>{filas}
-</table><p><button>Guardar robots</button></p></form>
 <h2>Scripts</h2>
-<form method="post">{botones}</form>
-<h2>Salida</h2>
+<form method="post">{botones}<p><button name="salir">Salir</button></p></form>
+<h2>Robots (robots.json)</h2>
+<p>Los scripts de un solo robot usan el primero.</p>
+<form method="post"><textarea name="robots" rows="8" cols="100">{html.escape(robots)}</textarea>
+<p><button name="guardar">Guardar robots</button></p></form>
+<h2>Salida (lo más nuevo, arriba)</h2>
 <iframe src="/salida" width="100%" height="450"></iframe>
-<form method="post" action="/salir"><p><button>Salir</button></p></form>
 </body></html>"""
 
 
 def pagina_salida():
-    """Lo que han escrito los scripts. Se recarga sola cada segundo (meta refresh)."""
-    partes = []
-    for script, (proceso, lineas) in procesos.items():
-        codigo = proceso.poll()
-        estado = f"en marcha (PID {proceso.pid})" if codigo is None else f"terminado (código {codigo})"
-        partes.append(f"<h3>{script}: {estado}</h3><pre>{html.escape(chr(10).join(lineas))}</pre>")
-    return ('<!doctype html><html lang="es"><head><meta charset="utf-8">'
-            '<meta http-equiv="refresh" content="1"></head><body>'
-            + ("".join(partes) or "<p>Aún no se ha iniciado ningún script.</p>") + "</body></html>")
+    """Estado de cada script y sus líneas, de la más nueva a la más vieja. Se recarga cada segundo."""
+    estados = "".join(f"<p>{s}: {'en marcha' if p.poll() is None else f'terminado (código {p.poll()})'}</p>"
+                      for s, p in procesos.items())
+    lineas = list(salida)          # copia de una vez: el hilo lector puede añadir mientras tanto
+    return ('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="1">'
+            f'{estados or "<p>Aún no se ha iniciado ningún script.</p>"}'
+            f'<pre>{html.escape(chr(10).join(reversed(lineas)))}</pre>')
 
 
 class Manejador(BaseHTTPRequestHandler):
@@ -157,25 +122,26 @@ class Manejador(BaseHTTPRequestHandler):
         self.responder(pagina_salida() if self.path == "/salida" else pagina())
 
     def do_POST(self):
-        # El navegador manda los campos como texto: script=primaria.py o nombre=...&host=...
-        # keep_blank_values: una casilla vacía también cuenta, para no descolocar las filas
+        # El botón pulsado llega como un campo más: iniciar=primaria.py, o robots=[...]&guardar=
+        # keep_blank_values: un botón sin valor (guardar=, salir=) también cuenta
         cuerpo = self.rfile.read(int(self.headers.get("Content-Length", 0))).decode()
-        campos = parse_qs(cuerpo, keep_blank_values=True)
-        script = campos.get("script", [""])[0]
-        if self.path == "/salir":
+        campos = {nombre: valores[0] for nombre, valores in parse_qs(cuerpo, keep_blank_values=True).items()}
+        if "salir" in campos:
             self.responder("<h1>Cerrado. Ya puedes cerrar esta pestaña.</h1>")
-            for s in procesos:
-                detener(s)
+            for script in procesos:
+                detener(script)
             # shutdown() espera a que acabe serve_forever(), así que se llama desde otro hilo
             threading.Thread(target=self.server.shutdown).start()
-        elif self.path == "/robots":
-            self.responder(pagina(guardar_robots(campos)))
-        elif script in SCRIPTS and self.path == "/iniciar":
-            self.responder(pagina(iniciar(script)))
-        elif script in SCRIPTS and self.path == "/detener":
-            self.responder(pagina(detener(script)))
+            return
+        if "guardar" in campos:
+            mensaje = guardar_robots(campos.get("robots", ""))
+        elif campos.get("iniciar") in SCRIPTS:
+            mensaje = iniciar(campos["iniciar"])
+        elif campos.get("detener") in SCRIPTS:
+            mensaje = detener(campos["detener"])
         else:
-            self.responder(pagina("Orden desconocida"))
+            mensaje = "Orden desconocida"
+        self.responder(pagina(mensaje))
 
     def responder(self, texto):
         datos = texto.encode()
@@ -213,5 +179,5 @@ elif __name__ == "__main__":
     try:
         servidor.serve_forever()
     except KeyboardInterrupt:
-        for s in procesos:
-            detener(s)
+        for script in procesos:
+            detener(script)
