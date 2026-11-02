@@ -22,9 +22,11 @@ entrega/                 lo que pide el enunciado
   robots.json            IP y posición de cada robot
   secuencia.json         secuencia de ejemplo de ensenar_reproducir.py
   panel_web.py           editar robots.json y lanzar los scripts desde el navegador
+  visualizador_ur3e      panel_web.py empaquetado para Linux (se descarga de Releases, no está en git)
 extras/
   prueba_robustez.py     prueba los parsers y la máquina de estados sin robot
   linux.sh, windows.bat  preparan el entorno la primera vez y abren el panel
+  compilar_linux.sh      compila entrega/visualizador_ur3e, el ejecutable de Linux
 material/
   ur3e_rg2-0.1.0-py3-none-any.whl   el visualizador que da la asignatura
 ```
@@ -103,6 +105,20 @@ En el robot real, las órdenes van como máximo a 0,3 rad/s y 0,5 rad/s². `V` y
 - ver lo que escribe cada script en la consola, actualizado cada segundo.
 
 **Salir** detiene los scripts en marcha y cierra el panel.
+
+### Ejecutable de Linux
+
+`entrega/visualizador_ur3e` es el panel web empaquetado en un único ejecutable para Linux x86-64. Lleva dentro Python, PyBullet y el visualizador, así que no hay que instalar nada. Se compila sobre Debian 11 (glibc 2.31) y funciona en Ubuntu 20.04 o posterior.
+
+1. Descárgalo de [Releases](../../releases/latest) y déjalo en `entrega/`, junto a los `.py` y `robots.json`.
+2. Ábrelo con doble clic o con `chmod +x visualizador_ur3e && ./visualizador_ur3e`.
+3. Se abre el panel en el navegador, igual que con `panel_web.py`.
+
+Los scripts no van dentro del ejecutable: los lee de su carpeta. Por eso se pueden cambiar los `.py` o `robots.json` sin volver a compilar. Para lanzar un script, el ejecutable se llama a sí mismo con el nombre del script y hace de `python`. Cada script tarda unos segundos más en arrancar que con Python, porque el ejecutable se descomprime cada vez.
+
+El ejecutable no está en el repositorio, porque ocupa unos 95 MB: se sube como descarga en Releases. Para volver a compilarlo hace falta podman y ejecutar `extras/compilar_linux.sh`. Antes, cierra con **Salir** cualquier `visualizador_ur3e` abierto: si está en marcha, el fichero no se puede sobrescribir (`Text file busy`).
+
+Al compilar se dejan fuera `libstdc++` y `libgcc_s`. Las de Debian 11 son demasiado viejas para el driver gráfico (Mesa) de un Linux actual, y PyBullet fallaba con `Failed to retrieve a framebuffer config`. Así el ejecutable usa las del sistema, que cualquier Linux con escritorio trae.
 
 ## Cómo funciona
 

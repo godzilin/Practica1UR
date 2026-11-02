@@ -12,11 +12,13 @@ página muestra lo que escribe en la consola.
 4. Salir detiene los scripts en marcha y apaga el servidor.
 
 Cómo usarlo: pulsa F5 en VS Code (o ejecuta python panel_web.py).
+También se puede empaquetar en un único ejecutable de Linux con extras/compilar_linux.sh.
 """
 
 import html
 import json
 import os
+import runpy
 import signal
 import subprocess
 import sys
@@ -27,7 +29,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs
 
-CARPETA = Path(__file__).parent
+# Empaquetado con PyInstaller, sys.executable es el propio ejecutable y no hay python.
+# Los scripts y robots.json están junto al ejecutable, así que se pueden cambiar sin recompilar.
+EMPAQUETADO = getattr(sys, "frozen", False)
+CARPETA = Path(sys.executable).parent if EMPAQUETADO else Path(__file__).parent
 ROBOTS = CARPETA / "robots.json"
 SCRIPTS = ["primaria.py", "tiempo_real.py", "varios_robots.py", "ensenar_reproducir.py"]
 LINEAS = 40                          # líneas de salida que se muestran de cada script
@@ -77,8 +82,10 @@ def leer_salida(proceso, lineas):
 def iniciar(script):
     if script in procesos and procesos[script][0].poll() is None:
         return f"{script} ya está en marcha"
-    # -u: sin buffer, para que cada print llegue en el momento
-    proceso = subprocess.Popen([sys.executable, "-u", script], cwd=CARPETA,
+    # -u: sin buffer, para que cada print llegue en el momento. Empaquetado, el ejecutable
+    # se llama a sí mismo con el script y hace de python (ver el final del fichero)
+    orden = [sys.executable, script] if EMPAQUETADO else [sys.executable, "-u", script]
+    proceso = subprocess.Popen(orden, cwd=CARPETA,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                text=True, encoding="utf-8", errors="replace",
                                env={**os.environ, "PYTHONIOENCODING": "utf-8"})
@@ -182,14 +189,27 @@ class Manejador(BaseHTTPRequestHandler):
         pass                                # sin una línea en la consola por cada recarga
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and EMPAQUETADO and len(sys.argv) > 1:
+    # El ejecutable lanzado por iniciar() con un script: lo ejecuta como haría python
+    sys.stdout.reconfigure(line_buffering=True)            # como -u: cada línea, en el momento
+    sys.argv = sys.argv[1:]
+    runpy.run_path(sys.argv[0], run_name="__main__")
+elif __name__ == "__main__":
     # Si el panel se lanzó en segundo plano, hereda Ctrl+C ignorado y se lo pasaría a los
     # scripts: Detener no podría pararlos con calma. Así Ctrl+C vuelve a funcionar.
     signal.signal(signal.SIGINT, signal.default_int_handler)
     servidor = HTTPServer(("127.0.0.1", 0), Manejador)    # puerto 0: el sistema elige uno libre
     url = f"http://127.0.0.1:{servidor.server_port}"
     print(f"Panel en {url} (pulsa Salir en la página para cerrarlo)", flush=True)
-    webbrowser.open(url)
+    # El ejecutable pone sus bibliotecas en LD_LIBRARY_PATH. El navegador tiene que usar las del
+    # sistema, y los scripts que lance el panel las del ejecutable: se cambia solo para abrirlo.
+    if EMPAQUETADO:
+        bibliotecas = os.environ.get("LD_LIBRARY_PATH", "")
+        os.environ["LD_LIBRARY_PATH"] = os.environ.get("LD_LIBRARY_PATH_ORIG", "")
+        webbrowser.open(url)
+        os.environ["LD_LIBRARY_PATH"] = bibliotecas
+    else:
+        webbrowser.open(url)
     try:
         servidor.serve_forever()
     except KeyboardInterrupt:
