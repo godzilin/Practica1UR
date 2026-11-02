@@ -6,6 +6,7 @@
 # recordclass (dependencia de pybullet_planning) y binutils para PyInstaller.
 # libstdc++ y libgcc_s se dejan fuera: las de Debian 11 son viejas para el driver gráfico
 # (Mesa) de un Linux moderno y PyBullet no podría abrir la ventana. Usa las del sistema.
+# --remove-destination: sustituye el ejecutable aunque haya uno abierto (que sigue con el viejo).
 # Necesita podman e Internet. Tarda unos minutos.
 set -e
 cd "$(dirname "$0")/.."
@@ -20,4 +21,4 @@ podman run --rm -v "$PWD":/src:Z -w /tmp docker.io/library/python:3.10-slim-bull
         --hidden-import unicodedata --hidden-import math /src/entrega/panel_web.py &&
     sed -i \"/^pyz = PYZ/i a.binaries = [b for b in a.binaries if not b[0].startswith(('libstdc++', 'libgcc_s'))]\" visualizador_ur3e.spec &&
     pyinstaller visualizador_ur3e.spec &&
-    cp dist/visualizador_ur3e /src/entrega/"
+    cp --remove-destination dist/visualizador_ur3e /src/entrega/"

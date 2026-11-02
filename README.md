@@ -116,7 +116,7 @@ En el robot real, las órdenes van como máximo a 0,3 rad/s y 0,5 rad/s². `V` y
 
 Los scripts no van dentro del ejecutable: los lee de su carpeta. Por eso se pueden cambiar los `.py` o `robots.json` sin volver a compilar. Para lanzar un script, el ejecutable se llama a sí mismo con el nombre del script y hace de `python`. Cada script tarda unos segundos más en arrancar que con Python, porque el ejecutable se descomprime cada vez.
 
-El ejecutable no está en el repositorio, porque ocupa unos 95 MB: se sube como descarga en Releases. Para volver a compilarlo hace falta podman y ejecutar `extras/compilar_linux.sh`. Antes, cierra con **Salir** cualquier `visualizador_ur3e` abierto: si está en marcha, el fichero no se puede sobrescribir (`Text file busy`).
+El ejecutable no está en el repositorio, porque ocupa unos 95 MB: se sube como descarga en Releases. Para volver a compilarlo hace falta podman y ejecutar `extras/compilar_linux.sh`. Sustituye el ejecutable aunque haya uno abierto, que sigue funcionando con la versión anterior hasta que se cierra.
 
 Al compilar se dejan fuera `libstdc++` y `libgcc_s`. Las de Debian 11 son demasiado viejas para el driver gráfico (Mesa) de un Linux actual, y PyBullet fallaba con `Failed to retrieve a framebuffer config`. Así el ejecutable usa las del sistema, que cualquier Linux con escritorio trae.
 
