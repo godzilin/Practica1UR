@@ -1,7 +1,4 @@
-venv/
 .venv/
-python/
+venv/
 __pycache__/
-*.pyc
-*.bak
-visualizador/secuencias/secuencia_*.json
+*.pdf
